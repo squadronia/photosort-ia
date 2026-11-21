@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useRef, useState, type ChangeEvent, type Dra
 import {
   Activity,
   Archive,
-  ArrowRight,
   ArrowUpRight,
   Camera,
   Check,
@@ -13,7 +12,6 @@ import {
   FolderOpen,
   Heart,
   Image,
-  LayoutDashboard,
   LogOut,
   Menu,
   Moon,
@@ -53,7 +51,9 @@ import {
 import { loadPreferences, savePreferences } from './services/preferences'
 import {
   classifyBurstPhotos,
-  MAX_PHOTOS_PER_BURST,
+  FPS_WINDOW_MS,
+  MAX_PHOTOS_PER_WINDOW,
+  logBurstDiagnostics,
   organizeBursts,
   type BurstOrganization,
 } from './processing/burstOrganizer'
@@ -68,17 +68,9 @@ const BurstOrganizerPage = lazy(() =>
 
 const navigation = [
   {
-    title: 'Workspace',
+    title: 'Organização',
     links: [
-      { to: '/', label: 'Visão geral', icon: LayoutDashboard },
-      { to: '/novo', label: 'Nova corrida', icon: Plus },
-      { to: '/eventos', label: 'Minhas corridas', icon: Camera },
-    ],
-  },
-  {
-    title: 'Biblioteca',
-    links: [
-      { to: '/processamentos', label: 'Organizar rajadas', icon: Activity },
+      { to: '/processamentos', label: 'Organizador de rajadas', icon: Activity },
     ],
   },
   {
@@ -344,7 +336,7 @@ function App() {
         />
       )}
       <aside className={`sidebar ${mobileMenuOpen ? 'sidebar-open' : ''}`}>
-        <Link className="brand" to="/" aria-label="PhotoSort — início">
+        <Link className="brand" to="/processamentos" aria-label="PhotoSort — início">
           <BrandLogo className="brand-logo" theme={preferences.theme} />
         </Link>
 
@@ -409,7 +401,7 @@ function App() {
           >
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <Link aria-label="PhotoSort — início" className="mobile-brand" to="/">
+          <Link aria-label="PhotoSort — início" className="mobile-brand" to="/processamentos">
             <BrandLogo className="mobile-brand-logo" theme={preferences.theme} />
           </Link>
           <ThemeButton onClick={toggleTheme} theme={preferences.theme} />
@@ -433,15 +425,7 @@ function App() {
 
           <div className="route-transition" key={location.pathname}>
             <Routes>
-              <Route
-                element={
-                  <OverviewPage
-                    events={visibleEvents}
-                    cloudEnabled={Boolean(auth.user)}
-                  />
-                }
-                path="/"
-              />
+              <Route element={<Navigate replace to="/processamentos" />} path="/" />
               <Route
                 element={
                   <NewEventPage
@@ -501,7 +485,7 @@ function App() {
                 path="/configuracoes"
               />
               <Route element={<HelpPage />} path="/ajuda" />
-              <Route element={<Navigate replace to="/" />} path="*" />
+              <Route element={<Navigate replace to="/processamentos" />} path="*" />
             </Routes>
           </div>
           {shouldRenderOrganizer && (
@@ -696,70 +680,6 @@ function EventCard({ event, onDelete }: { event: PhotoEvent; onDelete?: (id: str
   )
 }
 
-function OverviewPage({
-  events,
-  cloudEnabled,
-}: {
-  events: PhotoEvent[]
-  cloudEnabled: boolean
-}) {
-  const photoCount = events.reduce((total, event) => total + event.photoCount, 0)
-
-  return (
-    <div className="overview-page">
-      <PageHeading
-        action={<Link className="button button-primary" to="/novo"><Plus size={17} /> Nova corrida</Link>}
-        description="Organize as corridas fotografadas e prepare o próximo trabalho."
-        title="Visão geral"
-      />
-      <div className="notice notice-info">
-        <CircleHelp size={17} />
-        <span>Organize rajadas por horário EXIF no computador, sem enviar as fotos para análise. O limite é fixo em {MAX_PHOTOS_PER_BURST} fotos completas por rajada.</span>
-        <Link to="/processamentos">Abrir organizador <ArrowRight size={14} /></Link>
-      </div>
-      <section aria-label="Resumo do workspace" className="metric-grid">
-        <MetricCard icon={<Camera size={18} />} label="Corridas cadastradas" value={events.length} hint={cloudEnabled ? 'Corridas privadas no Supabase' : 'Rascunhos neste navegador'} />
-        <MetricCard icon={<Image size={18} />} label="Fotos das corridas" value={photoCount.toLocaleString('pt-BR')} hint={cloudEnabled ? 'Fotos enviadas ao bucket privado' : 'Fotos não são enviadas no modo local'} />
-        <MetricCard icon={<Folder size={18} />} label="Limite por rajada" value={MAX_PHOTOS_PER_BURST} hint="Fotos excedentes são preservadas separadamente" />
-      </section>
-
-      <section className="section-block">
-        <div className="section-heading-row">
-          <div>
-            <PageTitle>Eventos recentes</PageTitle>
-            <p className="muted">{cloudEnabled ? 'Corridas armazenadas no seu workspace privado.' : 'Rascunhos salvos neste navegador.'}</p>
-          </div>
-          <Link className="quiet-link" to="/eventos">Ver todas <ArrowRight size={15} /></Link>
-        </div>
-        {events.length ? (
-          <div className="event-grid">
-            {events.slice(0, 3).map((event) => <EventCard event={event} key={event.id} />)}
-          </div>
-        ) : <EmptyState title="Seu workspace está vazio" description="Cadastre uma corrida para começar." />}
-      </section>
-
-      <section className="bottom-grid">
-        <div className="panel activity-panel">
-          <PageTitle>Atividade recente</PageTitle>
-          {events.slice(0, 3).map((event) => (
-            <div className="activity-item" key={event.id}>
-              <span className="activity-icon"><Camera size={16} /></span>
-              <div><strong>{event.name}</strong><span>{event.photoCount.toLocaleString('pt-BR')} fotos · {formatDate(event.date)}</span></div>
-            </div>
-          ))}
-          {!events.length && <p className="muted">As corridas cadastradas aparecerão aqui.</p>}
-        </div>
-        <div className="panel quick-panel">
-          <PageTitle>Próximos passos</PageTitle>
-          <Link className="quick-link" to="/novo"><span className="quick-icon"><Plus size={17} /></span><span><strong>Cadastrar uma corrida</strong><small>Informe os dados da prova</small></span><ArrowRight size={16} /></Link>
-          <Link className="quick-link" to="/galeria"><span className="quick-icon"><Image size={17} /></span><span><strong>Abrir galeria</strong><small>Consulte as fotografias enviadas</small></span><ArrowRight size={16} /></Link>
-          <Link className="quick-link" to="/armazenamento"><span className="quick-icon"><Cloud size={17} /></span><span><strong>Ver armazenamento</strong><small>Uso do bucket e estado da conexão</small></span><ArrowRight size={16} /></Link>
-        </div>
-      </section>
-    </div>
-  )
-}
-
 function MetricCard({ icon, label, value, hint }: { icon: React.ReactNode; label: string; value: React.ReactNode; hint: string }) {
   return (
     <article className="metric-card">
@@ -904,6 +824,7 @@ function NewEventPage({
           },
         })
         const organized = organizeBursts(metadata, seconds * 1000)
+        logBurstDiagnostics(metadata, organized)
         const metadataById = new Map(metadata.map((photo, index) => [photo.id, sourceFiles[index]]))
         const uploadPhotos = classifyBurstPhotos(organized).map(({ photo, ...classification }) => {
           const file = metadataById.get(photo.id)
@@ -1029,7 +950,7 @@ function NewEventPage({
             <div className="panel-heading"><span className="step-number">03</span><div><h2>Classificação pronta</h2><p>Confira o resultado antes de cadastrar e enviar os originais.</p></div></div>
             <div className="metric-grid">
               <MetricCard icon={<Activity size={18} />} label="Rajadas" value={burstResult.summary.burstCount.toLocaleString('pt-BR')} hint={`Intervalo: ${maxGapSeconds} s`} />
-              <MetricCard icon={<Check size={18} />} label="Selecionadas" value={burstResult.summary.completePhotos.toLocaleString('pt-BR')} hint={`Até ${MAX_PHOTOS_PER_BURST} por rajada`} />
+              <MetricCard icon={<Check size={18} />} label="Selecionadas" value={burstResult.summary.completePhotos.toLocaleString('pt-BR')} hint={`Até ${MAX_PHOTOS_PER_WINDOW} por janela móvel de ${FPS_WINDOW_MS / 1000} s`} />
               <MetricCard icon={<Image size={18} />} label="Excedentes" value={burstResult.summary.excessPhotos.toLocaleString('pt-BR')} hint="Preservadas no armazenamento" />
               <MetricCard icon={<CircleHelp size={18} />} label="Para revisão" value={burstResult.summary.reviewPhotos.toLocaleString('pt-BR')} hint="Metadados ausentes ou ambíguos" />
             </div>
@@ -1333,8 +1254,8 @@ function SettingsPage({
       </section>
       <section className="panel settings-panel">
         <PageTitle>Organização por rajadas</PageTitle>
-        <div className="settings-row"><div><strong>Limite de fotos completas</strong><span>Regra fixa: no máximo 10 fotos por rajada; excedentes são preservados.</span></div><span className="local-pill">10 fotos</span></div>
-        <div className="settings-row"><div><strong>Intervalo máximo</strong><span>Definido para cada processamento e calibrado com a sequência real da câmera.</span></div><span className="local-pill">Por processamento</span></div>
+        <div className="settings-row"><div><strong>Limite de fotos completas</strong><span>Até {MAX_PHOTOS_PER_WINDOW} fotos por janela móvel de {FPS_WINDOW_MS} ms; excedentes são preservados.</span></div><span className="local-pill">10 FPS</span></div>
+        <div className="settings-row"><div><strong>Intervalo máximo de agrupamento</strong><span>Define quando uma rajada termina; não altera o limite de FPS.</span></div><span className="local-pill">Por processamento</span></div>
       </section>
       <section className="panel settings-panel">
         <PageTitle>Dados locais</PageTitle>

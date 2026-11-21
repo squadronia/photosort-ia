@@ -29,74 +29,31 @@ export function HelpPage() {
       <header className="page-heading">
         <div>
           <h1>Como usar o sistema</h1>
-          <p>Orientações para cada área do PhotoSort e soluções para problemas comuns.</p>
+          <p>Guia do Organizador de rajadas, armazenamento local e soluções para problemas comuns.</p>
         </div>
       </header>
 
       <div className="notice notice-info">
         <CircleHelp size={17} />
         <span>
-          Corridas e fotos enviadas ficam no workspace privado do Supabase. O Organizador de rajadas
-          processa e salva os arquivos localmente neste navegador; ele não sincroniza essa seleção com
-          outros dispositivos.
+          O Organizador de rajadas processa e salva os arquivos localmente neste navegador. As fotos
+          selecionadas não são enviadas à nuvem nem sincronizadas com outros dispositivos.
         </span>
       </div>
 
       <nav aria-label="Atalhos do sistema" className="help-quick-links">
-        <Link className="button button-secondary" to="/">Visão geral</Link>
-        <Link className="button button-secondary" to="/novo">Nova corrida</Link>
-        <Link className="button button-secondary" to="/eventos">Minhas corridas</Link>
-        <Link className="button button-secondary" to="/processamentos">Organizar rajadas</Link>
+        <Link className="button button-primary" to="/processamentos">Abrir Organizador de rajadas</Link>
         <Link className="button button-secondary" to="/armazenamento">Armazenamento</Link>
         <Link className="button button-secondary" to="/configuracoes">Configurações</Link>
       </nav>
 
-      <HelpGroup title="Primeiros passos">
-        <HelpModule title="Acesso e workspace privado">
-          <p>Entre com o e-mail e a senha da conta autorizada. O sistema não oferece cadastro público de novas contas.</p>
+      <HelpGroup title="Conta e armazenamento">
+        <HelpModule title="Salvamento local e dados da conta">
           <ul>
-            <li>Com o Supabase conectado, corridas e arquivos enviados ficam associados à sua conta.</li>
-            <li>Sem conexão configurada, os rascunhos ficam apenas neste navegador e os arquivos não são enviados.</li>
-            <li>Não compartilhe sua senha.</li>
-          </ul>
-        </HelpModule>
-        <HelpModule title="Visão geral">
-          <p>A página inicial resume suas corridas, a quantidade de fotos e o limite de fotos completas por rajada.</p>
-          <ol>
-            <li>Use <strong>Nova corrida</strong> para cadastrar e enviar fotos.</li>
-            <li>Abra <strong>Minhas corridas</strong> para consultar registros anteriores.</li>
-            <li>Use <strong>Organizar rajadas</strong> para separar fotos localmente e baixar um ZIP.</li>
-          </ol>
-        </HelpModule>
-      </HelpGroup>
-
-      <HelpGroup title="Corridas e fotografias">
-        <HelpModule title="Cadastrar uma corrida e enviar fotos">
-          <ol>
-            <li>Informe o nome, a data e, se quiser, observações como cidade ou percurso.</li>
-            <li>Selecione uma pasta, escolha arquivos ou arraste as imagens para a área indicada.</li>
-            <li>O cadastro na nuvem aceita JPG, PNG e WEBP de até 50 MB por arquivo. Arquivos incompatíveis são ignorados.</li>
-            <li>Defina o intervalo máximo da rajada em segundos. O valor sugerido é 2 segundos; ajuste de acordo com a câmera e a sequência.</li>
-            <li>Clique em <strong>Analisar e preparar envio</strong>, confira as rajadas, fotos selecionadas, excedentes e itens para revisão.</li>
-            <li>Depois, clique em <strong>Cadastrar e enviar</strong> e aguarde o progresso do envio.</li>
-          </ol>
-          <p>As fotos originais são preservadas, inclusive excedentes e imagens que precisam de revisão.</p>
-        </HelpModule>
-        <HelpModule title="Minhas corridas e galeria">
-          <ul>
-            <li>Em <strong>Minhas corridas</strong>, pesquise pelo nome e consulte o status e a quantidade de fotos.</li>
-            <li>O botão <strong>Abrir</strong> em um cartão leva à galeria. Use o filtro de corrida para ver as fotos de uma corrida específica; também é possível pesquisar, navegar pelas páginas, selecionar imagens e marcar favoritas.</li>
-            <li>Excluir uma corrida conectada remove também os arquivos dela do armazenamento privado. A ação pede confirmação e não pode ser desfeita.</li>
-            <li>Se aparecer um aviso de envio parcial, leia o detalhe antes de repetir o cadastro para evitar registros duplicados.</li>
-          </ul>
-          <p>Os status indicam se a corrida está aguardando imagens, pronta, em processamento, concluída ou com erro.</p>
-        </HelpModule>
-        <HelpModule title="Armazenamento e dados locais">
-          <ul>
-            <li>A página <strong>Armazenamento</strong> mostra o estado da conexão, o uso do bucket e a quantidade de corridas.</li>
-            <li>O Organizador de rajadas salva seleção e resultados no armazenamento local do navegador, separados por conta; isso não é enviado à nuvem nem sincronizado com outro computador.</li>
-            <li>O tema visual também é salvo localmente. Limpar os dados do site no navegador apaga essa cópia local.</li>
-            <li>Em <strong>Configurações</strong>, altere o tema e, quando estiver conectado à conta, o nome do perfil.</li>
+            <li>A seleção de fotos e os resultados do Organizador são salvos neste navegador, separados por conta. Eles não são enviados à nuvem nem sincronizados com outros dispositivos.</li>
+            <li>Limpar os dados do site no navegador também apaga a cópia local. Exporte o ZIP antes de limpar os dados.</li>
+            <li>A página <strong>Armazenamento</strong> mostra o estado da conexão e o uso do bucket privado.</li>
+            <li>Em <strong>Configurações</strong>, altere o tema e, quando disponível, o nome do perfil.</li>
           </ul>
         </HelpModule>
       </HelpGroup>
@@ -116,8 +73,8 @@ export function HelpPage() {
           <ul>
             <li><strong>Fotos recebidas:</strong> imagens aceitas na seleção.</li>
             <li><strong>Rajadas identificadas:</strong> grupos formados a partir da câmera e do horário EXIF, considerando o intervalo definido.</li>
-            <li><strong>Fotos completas:</strong> até 10 fotos mantidas em cada rajada.</li>
-            <li><strong>Rajadas excedentes:</strong> número de grupos que ultrapassaram o limite de 10 fotos.</li>
+            <li><strong>Fotos completas:</strong> até 10 fotos mantidas em qualquer janela móvel de 1.000 ms.</li>
+            <li><strong>Rajadas com excedentes:</strong> grupos em que alguma janela móvel ultrapassou esse limite.</li>
             <li><strong>Fotos excedentes:</strong> total de imagens acima do limite; elas são preservadas separadamente.</li>
             <li><strong>Fotos para revisão:</strong> originais sem data válida, com metadados inválidos ou sequência ambígua.</li>
           </ul>
@@ -142,9 +99,6 @@ export function HelpPage() {
             <li>Confira se os formatos são aceitos e se a seleção foi confirmada. Se continuar em zero, tente arrastar algumas imagens para a área.</li>
           </ul>
         </HelpModule>
-        <HelpModule title="Uma foto foi ignorada ou não pode ser enviada">
-          <p>O cadastro de corridas aceita JPG, PNG e WEBP até 50 MB por arquivo. Formatos diferentes, arquivos vazios ou acima do limite são ignorados; selecione uma versão compatível e tente novamente.</p>
-        </HelpModule>
         <HelpModule title="O salvamento local falhou ou não há espaço">
           <ul>
             <li>Espere a verificação ou o salvamento atual terminar. Se aparecer <strong>Tentar novamente</strong>, use-o para repetir o salvamento.</li>
@@ -161,10 +115,7 @@ export function HelpPage() {
           </ul>
         </HelpModule>
         <HelpModule title="Há fotos para revisão ou uma rajada está excedente">
-          <p>Isso não significa que os originais foram perdidos. Fotos sem data de captura, com EXIF inválido ou sequência ambígua ficam em revisão; fotos acima de 10 por rajada ficam como excedentes. Ambos os grupos são mantidos no ZIP para conferência.</p>
-        </HelpModule>
-        <HelpModule title="O upload apresentou erro ou ficou parcial">
-          <p>Leia o aviso exibido em <strong>Minhas corridas</strong>, confira a conexão e o limite de tamanho por arquivo. Se o erro continuar, guarde a mensagem exibida e procure o responsável pela conta antes de repetir o cadastro.</p>
+          <p>Isso não significa que os originais foram perdidos. Fotos sem data de captura, com EXIF inválido ou sem câmera identificável ficam em revisão; fotos acima de 10 em uma janela móvel de 1.000 ms ficam como excedentes. O intervalo informado define apenas como as rajadas são agrupadas, e os dois grupos são mantidos no ZIP para conferência.</p>
         </HelpModule>
       </HelpGroup>
     </div>

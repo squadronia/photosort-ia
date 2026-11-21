@@ -37,9 +37,11 @@ No Supabase, abra **Storage → Settings** e configure o **Global file size limi
 - Abra **Organizar rajadas** (`/processamentos`) e selecione uma pasta ou várias imagens. A leitura EXIF, o cálculo SHA-256 e a criação do ZIP acontecem no navegador; os arquivos escolhidos nesta página não são enviados ao Supabase.
 - Formatos de imagem são selecionados localmente. JPG, JPEG, TIFF, PNG e WEBP são reconhecidos para análise quando contêm metadados compatíveis.
 - O horário de captura usa `DateTimeOriginal` + `SubSecTimeOriginal`, depois `DateTimeDigitized` + `SubSecTimeDigitized` e, por fim, `DateTime` + `SubSecTime`. A data de modificação do arquivo nunca substitui um horário EXIF ausente.
-- O fotógrafo informa o intervalo máximo entre capturas em cada processamento. Não há um intervalo universal predefinido. A calibração com fotografias reais da câmera é necessária antes do uso operacional.
-- Sequências são agrupadas por câmera identificável. Horários empatados na mesma câmera, câmeras não identificáveis e metadados ausentes ou inválidos vão para revisão.
-- Cada rajada mantém até 10 fotos. Acima desse limite, são mantidas as 10 posições mais centrais; se houver empate de centralidade, o excedente é removido do início da sequência. Para 11 fotos, isso mantém as posições 2 a 11.
+- Frações de segundo EXIF são preservadas na ordenação. Datas sem fuso explícito são comparadas como horários EXIF de parede; offsets explícitos são normalizados para UTC.
+- O fotógrafo informa o intervalo máximo entre capturas para agrupar cada rajada. Essa configuração (por exemplo, 2 segundos) não altera o limite de FPS.
+- Sequências são agrupadas por câmera identificável e ordenadas cronologicamente. Timestamps iguais são capturas distintas e permanecem elegíveis; câmeras não identificáveis e metadados ausentes ou inválidos vão para revisão.
+- O limite é de 10 fotos em qualquer janela móvel de 1.000 ms, contando os dois extremos (`[início, início + 1.000 ms]`). Não há divisão pelo segundo do relógio e cada arquivo recebe uma única classificação. Em uma sequência contida em uma janela, são mantidas as 10 posições centrais; em janelas sobrepostas, a seleção maximiza as fotos mantidas e usa a centralidade como desempate.
+- Resultados locais de versões anteriores são recalculados a partir dos metadados já salvos ao abrir o organizador, sem reprocessar ou alterar os arquivos originais.
 - O ZIP inclui `FOTOS_COMPLETAS`, `FOTOS_EXCEDENTES`, `REVISAO` e `RELATORIO.txt`. Imagens são armazenadas no ZIP sem recompressão; SHA-256 identifica cópias exatas sem removê-las.
 - O navegador salva automaticamente os arquivos selecionados, o intervalo e os resultados no IndexedDB, separados pelo ID da conta conectada. Os dados ficam somente nesse navegador e aparelho; não são enviados ao Supabase nem sincronizados entre dispositivos.
 - Ao voltar à mesma conta no mesmo navegador, a seleção e os resultados concluídos são restaurados. Se a página for fechada durante a análise, os arquivos continuam salvos, mas a análise precisa ser iniciada novamente.
@@ -64,8 +66,8 @@ No Supabase, abra **Storage → Settings** e configure o **Global file size limi
 
 - A autenticação, o cadastro de corridas, os uploads privados e a galeria do Supabase continuam disponíveis.
 - O perfil permite atualizar o próprio nome nos metadados do Supabase Auth, sem alterar o e-mail ou criar uma tabela.
-- O organizador local implementa leitura de EXIF, agrupamento por intervalo configurável, seleção central determinística, identificação SHA-256 de duplicatas, revisão e exportação ZIP.
-- O limite de 10 por rajada e o particionamento total das fotos têm testes automatizados (`npm test`).
+- O organizador local implementa leitura de EXIF, agrupamento por intervalo configurável, limite móvel de 10 FPS, seleção central determinística, identificação SHA-256 de duplicatas, revisão e exportação ZIP.
+- O limite móvel de 10 fotos por 1.000 ms, o agrupamento independente e o particionamento total das fotos têm testes automatizados (`npm test`).
 - O repositório não contém uma amostra de fotografias reais; os intervalos ainda precisam ser calibrados com imagens das câmeras usadas pelo fotógrafo.
 - O processamento local não grava jobs ou imagens no banco. A seleção e os resultados concluídos são restaurados do navegador; um processamento interrompido precisa ser iniciado novamente.
 - Reconhecimento facial, identificação de atletas, avaliação estética e seleção por IA não fazem parte do produto.

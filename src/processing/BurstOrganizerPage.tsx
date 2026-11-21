@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
-import { Archive, Check, Download, FolderOpen, Image, Upload, X } from 'lucide-react'
+import { Activity, Archive, Check, Download, FolderOpen, Image, Upload, X } from 'lucide-react'
 import {
   canSaveArchiveToDisk,
   downloadArchiveFile,
@@ -9,7 +9,10 @@ import {
   type ArchiveProgress,
 } from './archive'
 import {
-  MAX_PHOTOS_PER_BURST,
+  BURST_ALGORITHM_VERSION,
+  FPS_WINDOW_MS,
+  MAX_PHOTOS_PER_WINDOW,
+  logBurstDiagnostics,
   organizeBursts,
   type BurstOrganization,
   type PhotoMetadata,
@@ -116,7 +119,7 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
   const persistenceQueueRef = useRef<Promise<void>>(Promise.resolve())
   const busy = phase === 'analyzing' || phase === 'cancelling' || phase === 'archiving'
 
-  const persistCurrentSession = async (options: {
+  const persistCurrentSession = useCallback(async (options: {
     addedFiles?: SelectedPhotoFile[]
     replaceFiles?: boolean
   } = {}): Promise<boolean> => {
@@ -182,7 +185,7 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
       }
       return false
     }
-  }
+  }, [userId])
 
   useEffect(() => () => {
     analysisAbortRef.current?.abort()
@@ -198,18 +201,32 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
       if (!active) return
 
       const savedPhotos = session?.files ?? []
+      const savedMetadata = session?.metadata ?? []
+      let restoredResult = session?.result ?? null
+      const resultNeedsRefresh = Boolean(
+        restoredResult && restoredResult.algorithmVersion !== BURST_ALGORITHM_VERSION,
+      )
+      if (resultNeedsRefresh) {
+        const savedGapMs = Number(session?.maxGapSeconds) * 1000
+        restoredResult = Number.isFinite(savedGapMs) && savedGapMs > 0
+          ? organizeBursts(savedMetadata, savedGapMs)
+          : null
+      }
+
       selectedPhotosRef.current = savedPhotos
       ignoredFilesRef.current = session?.ignoredFiles ?? 0
       maxGapSecondsRef.current = session?.maxGapSeconds ?? ''
-      metadataRef.current = session?.metadata ?? []
-      resultRef.current = session?.result ?? null
-      archiveCompleteRef.current = session?.archiveComplete ?? false
+      metadataRef.current = savedMetadata
+      resultRef.current = restoredResult
+      archiveCompleteRef.current = resultNeedsRefresh
+        ? false
+        : session?.archiveComplete ?? false
 
       setSelectedPhotos(savedPhotos)
       setIgnoredFiles(ignoredFilesRef.current)
       setMaxGapSeconds(maxGapSecondsRef.current)
       setMetadata(metadataRef.current)
-      setResult(resultRef.current)
+      setResult(restoredResult)
       setPhase(resultRef.current
         ? archiveCompleteRef.current ? 'complete' : 'ready'
         : 'idle')
@@ -217,6 +234,7 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
       setStorageStatus('saved')
       setIsHydrated(true)
       hydratedRef.current = true
+      if (resultNeedsRefresh) void persistCurrentSession()
     }).catch((reason: unknown) => {
       if (!active) return
       console.error('Não foi possível carregar o processamento salvo neste navegador.', reason)
@@ -225,7 +243,7 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
     })
 
     return () => { active = false }
-  }, [userId])
+  }, [userId, persistCurrentSession])
 
   const addFiles = async (selected: FileList | File[]) => {
     if (busy || isCheckingStorage || !hydratedRef.current || storageStatus === 'loading' || storageStatus === 'saving') {
@@ -339,6 +357,7 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
     }).then((photos) => {
       try {
         const organized = organizeBursts(photos, seconds * 1000)
+        logBurstDiagnostics(photos, organized)
         metadataRef.current = photos
         resultRef.current = organized
         setMetadata(photos)
@@ -469,10 +488,16 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
 
   return (
     <>
-      <header className="page-heading">
-        <div>
+      <header className="page-heading burst-hero">
+        <div className="burst-hero-content">
+          <span className="burst-eyebrow"><Activity aria-hidden="true" size={14} /> ORGANIZAÇÃO FOTOGRÁFICA</span>
           <h1>Organizador de rajadas</h1>
-          <p>Agrupe fotos por horário EXIF, limite cada rajada a 10 imagens e baixe os originais organizados.</p>
+          <p>Analise sequências por metadados EXIF, revise excedentes e exporte os originais em um ZIP organizado.</p>
+          <div aria-label="Recursos do organizador" className="burst-hero-features">
+            <span><Check aria-hidden="true" size={14} /> Processamento local</span>
+            <span><Image aria-hidden="true" size={14} /> Agrupamento por EXIF</span>
+            <span><Archive aria-hidden="true" size={14} /> Exportação sem recompressão</span>
+          </div>
         </div>
       </header>
       <div className="notice notice-info">
@@ -631,7 +656,7 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
         ) : null}
 
         <div className="form-actions burst-actions">
-          <span>Até {MAX_PHOTOS_PER_BURST} fotos completas por rajada. As excedentes e as fotos ambíguas são preservadas para revisão.</span>
+          <span>Limite: {MAX_PHOTOS_PER_WINDOW} fotos por janela móvel de {FPS_WINDOW_MS / 1000} s. Excedentes e fotos ambíguas são preservados para revisão.</span>
           <div className="burst-action-buttons">
             {busy ? (
               <button className="button button-secondary" onClick={cancelCurrentOperation} type="button">
@@ -698,7 +723,7 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
           <div className="metric-grid burst-metric-grid">
             <MetricCard label="Fotos recebidas" value={result.summary.totalPhotos.toLocaleString('pt-BR')} hint={`${formatBytes(totalBytes)} selecionados`} />
             <MetricCard label="Rajadas identificadas" value={result.summary.burstCount.toLocaleString('pt-BR')} hint="Grupos por câmera e horário" />
-            <MetricCard label="Rajadas excedentes" value={result.summary.burstsOverLimit.toLocaleString('pt-BR')} hint={`Unidades com mais de ${MAX_PHOTOS_PER_BURST} fotos`} />
+            <MetricCard label="Rajadas com excedentes" value={result.summary.burstsOverLimit.toLocaleString('pt-BR')} hint="Grupos com excesso na janela móvel" />
             <MetricCard label="Fotos completas" value={result.summary.completePhotos.toLocaleString('pt-BR')} hint="Originais mantidos" />
             <MetricCard label="Fotos excedentes" value={result.summary.excessPhotos.toLocaleString('pt-BR')} hint="Imagens a mais, preservadas" />
             <MetricCard label="Fotos para revisão" value={result.summary.reviewPhotos.toLocaleString('pt-BR')} hint={`${result.summary.missingMetadataPhotos} sem data válida`} />
@@ -715,8 +740,8 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
             <div className="burst-summary-help">
               <p><strong>Fotos recebidas:</strong> total de imagens aceitas nesta organização.</p>
               <p><strong>Rajadas identificadas:</strong> grupos formados por câmera e horário EXIF, usando o intervalo máximo que você definiu.</p>
-              <p><strong>Fotos completas:</strong> até {MAX_PHOTOS_PER_BURST} fotos mantidas em cada rajada; os originais não são apagados.</p>
-              <p><strong>Rajadas excedentes:</strong> quantidade de rajadas (unidades) que receberam mais de {MAX_PHOTOS_PER_BURST} fotos.</p>
+              <p><strong>Fotos completas:</strong> originais mantidos sem ultrapassar {MAX_PHOTOS_PER_WINDOW} fotos em qualquer janela móvel de {FPS_WINDOW_MS} ms.</p>
+              <p><strong>Rajadas com excedentes:</strong> grupos em que ao menos uma janela móvel ultrapassou o limite de {MAX_PHOTOS_PER_WINDOW} fotos.</p>
               <p><strong>Fotos excedentes:</strong> quantidade total de imagens acima do limite, preservadas na pasta de excedentes.</p>
               <p><strong>Fotos para revisão:</strong> imagens sem horário válido ou com sequência ambígua, mantidas separadas e fora das rajadas.</p>
               <p><strong>Na tabela “Rajadas identificadas”:</strong> cada linha é uma rajada; a coluna “Excedentes” mostra quantas fotos sobraram naquela unidade. O cartão “Fotos excedentes” mostra a soma de todas as linhas.</p>

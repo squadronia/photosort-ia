@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { classifyBurstPhotos, organizeBursts, type PhotoMetadata } from './burstOrganizer'
+import {
+  classifyBurstPhotos,
+  FPS_WINDOW_MS,
+  organizeBursts,
+  type PhotoMetadata,
+} from './burstOrganizer'
 
 function photo(index: number, overrides: Partial<PhotoMetadata> = {}): PhotoMetadata {
   return {
@@ -23,41 +28,82 @@ function photo(index: number, overrides: Partial<PhotoMetadata> = {}): PhotoMeta
   }
 }
 
+function photosInOneSecond(count: number): PhotoMetadata[] {
+  return Array.from({ length: count }, (_, index) =>
+    photo(index, {
+      capturedAtMs: count === 1 ? 0 : index * FPS_WINDOW_MS / (count - 1),
+    }),
+  )
+}
+
 describe('organizeBursts', () => {
-  it.each([3, 10])('keeps every photo in a burst of %i', (count) => {
-    const photos = Array.from({ length: count }, (_, index) => photo(index))
-    const result = organizeBursts(photos, count * 100)
+  it.each([
+    [5, 0],
+    [10, 0],
+    [11, 1],
+    [15, 5],
+    [20, 10],
+  ])('classifies %i photos in one second with %i excess', (count, expectedExcess) => {
+    const photos = photosInOneSecond(count)
+    const result = organizeBursts(photos, 2000)
+
+    expect(result.summary.excessPhotos).toBe(expectedExcess)
+    expect(result.summary.completePhotos).toBe(count - expectedExcess)
+    expect(result.summary.completePhotos + result.summary.excessPhotos).toBe(count)
+    if (count > 10) {
+      const start = Math.ceil(expectedExcess / 2)
+      expect(result.bursts[0].selected.map((item) => item.id))
+        .toEqual(photos.slice(start, start + 10).map((item) => item.id))
+    }
+  })
+
+  it('uses a moving one-second window across a clock-second boundary', () => {
+    const second = Date.UTC(2026, 0, 1)
+    const photos = Array.from({ length: 11 }, (_, index) =>
+      photo(index, { capturedAtMs: second + 950 + index * 10 }),
+    )
+    const result = organizeBursts(photos, 2000)
+
+    expect(result.summary.excessPhotos).toBe(1)
+    expect(result.excessDiagnostics[0].windowStartMs).toBe(second + 950)
+    expect(result.excessDiagnostics[0].windowEndMs).toBe(second + 1950)
+  })
+
+  it('counts both endpoints of the configured 1,000 ms window', () => {
+    const photos = Array.from({ length: 11 }, (_, index) =>
+      photo(index, { capturedAtMs: index * 100 }),
+    )
+    const result = organizeBursts(photos, 2000)
+
+    expect(result.summary.excessPhotos).toBe(1)
+  })
+
+  it('sorts fractional capture timestamps chronologically before applying the limit', () => {
+    const second = Date.UTC(2026, 0, 1)
+    const photos = Array.from({ length: 11 }, (_, index) =>
+      photo(index, { capturedAtMs: second + 100 + index * 0.125 }),
+    ).reverse()
+    const result = organizeBursts(photos, 2000)
+
+    expect(result.bursts[0].photos.map((item) => item.id))
+      .toEqual(Array.from({ length: 11 }, (_, index) => `photo-${index}`))
+    expect(result.bursts[0].selected.map((item) => item.id))
+      .toEqual(Array.from({ length: 10 }, (_, index) => `photo-${index + 1}`))
+    expect(result.summary.excessPhotos).toBe(1)
+  })
+
+  it('does not impose a ten-photo cap on an entire burst spanning multiple seconds', () => {
+    const photos = Array.from({ length: 20 }, (_, index) =>
+      photo(index, { capturedAtMs: index * 500 }),
+    )
+    const result = organizeBursts(photos, 2000)
 
     expect(result.bursts).toHaveLength(1)
-    expect(result.bursts[0].selected).toEqual(photos)
-    expect(result.bursts[0].excess).toEqual([])
+    expect(result.summary.excessPhotos).toBe(0)
+    expect(result.bursts[0].selected).toHaveLength(20)
   })
 
-  it('keeps the centered ten for a burst of 11 and moves the earlier tie-break photo to excess', () => {
-    const photos = Array.from({ length: 11 }, (_, index) => photo(index))
-    const result = organizeBursts(photos, 1100)
-
-    expect(result.bursts[0].selected.map((item) => item.id))
-      .toEqual(photos.slice(1).map((item) => item.id))
-    expect(result.bursts[0].excess.map((item) => item.id)).toEqual(['photo-0'])
-  })
-
-  it('applies the centered tie-break consistently to 17 and 20 photos', () => {
-    const photos17 = Array.from({ length: 17 }, (_, index) => photo(index))
-    const photos20 = Array.from({ length: 20 }, (_, index) => photo(index))
-
-    const result17 = organizeBursts(photos17, 1700)
-    const result20 = organizeBursts(photos20, 2000)
-
-    expect(result17.bursts[0].selected.map((item) => item.id))
-      .toEqual(photos17.slice(4, 14).map((item) => item.id))
-    expect(result20.bursts[0].selected.map((item) => item.id))
-      .toEqual(photos20.slice(5, 15).map((item) => item.id))
-    expect(result17.summary.excessPhotos).toBe(7)
-    expect(result20.summary.excessPhotos).toBe(10)
-  })
-
-  it('starts a new burst when the configured capture-time gap is exceeded', () => {
+  it('starts a new burst when the configured grouping gap is exceeded', () => {
     const photos = [
       photo(1, { capturedAtMs: 1000 }),
       photo(2, { capturedAtMs: 1500 }),
@@ -67,6 +113,7 @@ describe('organizeBursts', () => {
     const result = organizeBursts(photos, 500)
 
     expect(result.bursts.map((burst) => burst.photos.length)).toEqual([2, 1])
+    expect(result.summary.excessPhotos).toBe(0)
   })
 
   it('keeps camera streams separate even when their times overlap', () => {
@@ -81,20 +128,17 @@ describe('organizeBursts', () => {
     expect(result.summary.reviewPhotos).toBe(0)
   })
 
-  it('routes equal timestamps from the same camera to review instead of merging them', () => {
-    const photos = [
-      photo(1, { capturedAtMs: 1000 }),
-      photo(2, { capturedAtMs: 1100 }),
-      photo(3, { capturedAtMs: 1100 }),
-      photo(4, { capturedAtMs: 1200 }),
-    ]
-
+  it('treats identical timestamps as distinct, deterministically ordered captures', () => {
+    const photos = Array.from({ length: 11 }, (_, index) =>
+      photo(index, { capturedAtMs: 1000 }),
+    )
     const result = organizeBursts(photos, 1000)
+    const assignments = classifyBurstPhotos(result)
 
-    expect(result.review.map((item) => item.photo.id)).toEqual(['photo-2', 'photo-3'])
-    expect(result.review.every((item) => item.reason === 'ambiguous_sequence')).toBe(true)
-    expect(result.bursts.map((burst) => burst.photos.map((item) => item.id)))
-      .toEqual([['photo-1'], ['photo-4']])
+    expect(result.review).toEqual([])
+    expect(result.bursts[0].selected.map((item) => item.id))
+      .toEqual(photos.slice(1).map((item) => item.id))
+    expect(assignments.filter((item) => item.category === 'excess')).toHaveLength(1)
   })
 
   it('routes missing timestamps and unknown cameras to review and preserves the total', () => {
@@ -113,9 +157,9 @@ describe('organizeBursts', () => {
       .toBe(photos.length)
   })
 
-  it('creates a persistent assignment for every complete, excess, and review photo', () => {
+  it('creates one persistent assignment for each complete, excess, and review photo', () => {
     const photos = [
-      ...Array.from({ length: 11 }, (_, index) => photo(index)),
+      ...photosInOneSecond(11),
       photo(11, { cameraMake: null, cameraModel: null, cameraSerial: null }),
     ]
     const result = organizeBursts(photos, 2000)
@@ -133,8 +177,48 @@ describe('organizeBursts', () => {
     })
   })
 
-  it('classifies a batch larger than 5,000 without dropping originals', () => {
-    const photos = Array.from({ length: 5001 }, (_, index) => photo(index))
+  it('keeps overlapping windows within the limit and accounts for every photo once', () => {
+    const photos = Array.from({ length: 30 }, (_, index) =>
+      photo(index, { capturedAtMs: index * 75 }),
+    )
+    const result = organizeBursts(photos, 2000)
+    const assignments = classifyBurstPhotos(result)
+    const keptTimes = result.bursts.flatMap((burst) => burst.selected)
+      .map((item) => item.capturedAtMs)
+      .filter((time): time is number => time !== null)
+
+    for (const start of new Set(photos.map((item) => item.capturedAtMs).filter(
+      (time): time is number => time !== null,
+    ))) {
+      expect(keptTimes.filter((time) => time >= start && time - start <= FPS_WINDOW_MS).length)
+        .toBeLessThanOrEqual(10)
+    }
+    expect(new Set(assignments.map((item) => item.photo.id)).size).toBe(photos.length)
+    expect(assignments.filter((item) => item.category === 'complete').length +
+      assignments.filter((item) => item.category === 'excess').length).toBe(photos.length)
+    expect(result.excessDiagnostics).toHaveLength(result.summary.excessPhotos)
+  })
+
+  it('returns the same classification when the same selection is processed again', () => {
+    const photos = photosInOneSecond(20)
+
+    expect(organizeBursts(photos, 2000)).toEqual(organizeBursts(photos, 2000))
+  })
+
+  it('does not mark extra photos while resolving overlapping-window conflicts', () => {
+    const timestamps = [0, 200, 200, 200, 300, 400, 600, 700, 800, 800, 900, 1100]
+    const photos = timestamps.map((capturedAtMs, index) => photo(index, { capturedAtMs }))
+    const result = organizeBursts(photos, 2000)
+
+    expect(result.summary.excessPhotos).toBe(1)
+    expect(result.summary.completePhotos).toBe(11)
+    expect(result.excessDiagnostics).toHaveLength(1)
+  })
+
+  it('classifies a large set of equal-time photos without dropping originals', () => {
+    const photos = Array.from({ length: 5001 }, (_, index) =>
+      photo(index, { capturedAtMs: 1000 }),
+    )
     const result = organizeBursts(photos, 2000)
     const assignments = classifyBurstPhotos(result)
 
@@ -144,18 +228,16 @@ describe('organizeBursts', () => {
     expect(assignments.filter((item) => item.category === 'excess')).toHaveLength(4991)
   })
 
-  it('counts exact duplicate hashes without removing any file', () => {
+  it('counts exact duplicate hashes without deduplicating the photo records', () => {
     const photos = [
-      photo(1, { sha256: 'same-hash' }),
-      photo(2, { sha256: 'same-hash' }),
-      photo(3, { sha256: 'other-hash', hashError: 'unavailable' }),
+      photo(1, { name: 'nome-a.jpg', capturedAtMs: 1000, sha256: 'same-hash' }),
+      photo(2, { name: 'nome-b.jpg', capturedAtMs: 1500, sha256: 'same-hash' }),
     ]
-
     const result = organizeBursts(photos, 1000)
 
     expect(result.summary.duplicateCopies).toBe(1)
-    expect(result.summary.duplicateCheckUnavailable).toBe(1)
-    expect(result.summary.totalPhotos).toBe(3)
+    expect(result.summary.totalPhotos).toBe(2)
+    expect(result.summary.completePhotos).toBe(2)
   })
 
   it('rejects a missing or invalid burst interval', () => {

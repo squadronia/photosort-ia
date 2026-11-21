@@ -1,4 +1,6 @@
-export const MAX_PHOTOS_PER_BURST = 10
+export const MAX_PHOTOS_PER_WINDOW = 10
+export const FPS_WINDOW_MS = 1000
+export const BURST_ALGORITHM_VERSION = 2
 
 export type PhotoMetadataStatus = 'ready' | 'missing_capture_time' | 'invalid_metadata'
 export type ReviewReason = 'missing_capture_time' | 'invalid_metadata' | 'ambiguous_sequence'
@@ -65,12 +67,24 @@ export type BurstSummary = {
   duplicateCheckUnavailable: number
 }
 
+export type BurstExcessDiagnostic = {
+  photoId: string
+  burstId: string
+  capturedAtMs: number
+  windowStartMs: number
+  windowEndMs: number
+  windowPhotoCount: number
+  retainedPhotoCount: number
+}
+
 export type BurstOrganization = {
   bursts: BurstGroup[]
   review: ReviewPhoto[]
   duplicates: DuplicateGroup[]
+  excessDiagnostics: BurstExcessDiagnostic[]
   summary: BurstSummary
   maxGapMs: number
+  algorithmVersion: number
 }
 
 type CameraStream = {
@@ -105,21 +119,152 @@ function getCameraIdentity(photo: PhotoMetadata): { key: string; label: string }
   return null
 }
 
+function captureTimestamp(photo: PhotoMetadata): number {
+  if (photo.capturedAtMs === null || !Number.isFinite(photo.capturedAtMs)) {
+    throw new Error(`A fotografia "${photo.name}" não tem um horário válido para classificação.`)
+  }
+  return photo.capturedAtMs
+}
+
+function firstTimestampAtOrAfter(photos: PhotoMetadata[], timestamp: number): number {
+  let low = 0
+  let high = photos.length
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2)
+    if (captureTimestamp(photos[middle]) < timestamp) low = middle + 1
+    else high = middle
+  }
+  return low
+}
+
+function firstTimestampAfter(photos: PhotoMetadata[], timestamp: number): number {
+  let low = 0
+  let high = photos.length
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2)
+    if (captureTimestamp(photos[middle]) <= timestamp) low = middle + 1
+    else high = middle
+  }
+  return low
+}
+
+function selectGreedily(photos: PhotoMetadata[], reverse: boolean): {
+  selected: boolean[]
+  excessDiagnostics: Array<Omit<BurstExcessDiagnostic, 'burstId'>>
+  selectedCount: number
+  centerScore: number
+} {
+  const selected = Array.from({ length: photos.length }, () => false)
+  const excessDiagnostics: Array<Omit<BurstExcessDiagnostic, 'burstId'>> = []
+  const active: number[] = []
+  let activeStart = 0
+
+  for (let step = 0; step < photos.length; step += 1) {
+    const index = reverse ? photos.length - step - 1 : step
+    const timestamp = captureTimestamp(photos[index])
+    while (activeStart < active.length) {
+      const activeTimestamp = captureTimestamp(photos[active[activeStart]])
+      const gap = reverse ? activeTimestamp - timestamp : timestamp - activeTimestamp
+      if (gap <= FPS_WINDOW_MS) break
+      activeStart += 1
+    }
+
+    if (active.length - activeStart < MAX_PHOTOS_PER_WINDOW) {
+      selected[index] = true
+      active.push(index)
+      continue
+    }
+
+    const windowStartMs = reverse
+      ? timestamp
+      : captureTimestamp(photos[active[activeStart]])
+    const windowEndMs = windowStartMs + FPS_WINDOW_MS
+    excessDiagnostics.push({
+      photoId: photos[index].id,
+      capturedAtMs: timestamp,
+      windowStartMs,
+      windowEndMs,
+      windowPhotoCount:
+        firstTimestampAfter(photos, windowEndMs) -
+        firstTimestampAtOrAfter(photos, windowStartMs),
+      retainedPhotoCount: active.length - activeStart + 1,
+    })
+  }
+
+  let selectedCount = 0
+  let centerScore = 0
+  for (let index = 0; index < selected.length; index += 1) {
+    if (!selected[index]) continue
+    selectedCount += 1
+    centerScore += photos.length - Math.abs(2 * index - (photos.length - 1))
+  }
+
+  return { selected, excessDiagnostics, selectedCount, centerScore }
+}
+
 function selectBurstPhotos(photos: PhotoMetadata[]): {
   selected: PhotoMetadata[]
   excess: PhotoMetadata[]
+  excessDiagnostics: Array<Omit<BurstExcessDiagnostic, 'burstId'>>
 } {
-  if (photos.length <= MAX_PHOTOS_PER_BURST) {
-    return { selected: photos, excess: [] }
+  const isExcess = Array.from({ length: photos.length }, () => false)
+  const excessDiagnostics: Array<Omit<BurstExcessDiagnostic, 'burstId'>> = []
+  for (let componentStart = 0; componentStart < photos.length;) {
+    let componentEnd = componentStart + 1
+    while (
+      componentEnd < photos.length &&
+      captureTimestamp(photos[componentEnd]) - captureTimestamp(photos[componentEnd - 1]) <= FPS_WINDOW_MS
+    ) {
+      componentEnd += 1
+    }
+
+    const component = photos.slice(componentStart, componentEnd)
+    const firstTime = captureTimestamp(component[0])
+    const lastTime = captureTimestamp(component[component.length - 1])
+
+    if (lastTime - firstTime <= FPS_WINDOW_MS) {
+      if (component.length > MAX_PHOTOS_PER_WINDOW) {
+        const excessCount = component.length - MAX_PHOTOS_PER_WINDOW
+        const selectedStart = Math.ceil(excessCount / 2)
+        const selectedEnd = selectedStart + MAX_PHOTOS_PER_WINDOW
+        for (let index = 0; index < component.length; index += 1) {
+          if (index >= selectedStart && index < selectedEnd) continue
+          const photo = component[index]
+          const timestamp = captureTimestamp(photo)
+          isExcess[componentStart + index] = true
+          excessDiagnostics.push({
+            photoId: photo.id,
+            capturedAtMs: timestamp,
+            windowStartMs: firstTime,
+            windowEndMs: firstTime + FPS_WINDOW_MS,
+            windowPhotoCount: component.length,
+            retainedPhotoCount: component.length,
+          })
+        }
+      }
+      componentStart = componentEnd
+      continue
+    }
+
+    const forward = selectGreedily(component, false)
+    const reverse = selectGreedily(component, true)
+    const choice = reverse.selectedCount > forward.selectedCount ||
+      (reverse.selectedCount === forward.selectedCount && reverse.centerScore > forward.centerScore)
+      ? reverse
+      : forward
+    for (let index = 0; index < component.length; index += 1) {
+      isExcess[componentStart + index] = !choice.selected[index]
+    }
+    for (const diagnostic of choice.excessDiagnostics) {
+      excessDiagnostics.push(diagnostic)
+    }
+    componentStart = componentEnd
   }
 
-  const excessCount = photos.length - MAX_PHOTOS_PER_BURST
-  const start = Math.ceil(excessCount / 2)
-  const end = start + MAX_PHOTOS_PER_BURST
-
   return {
-    selected: photos.slice(start, end),
-    excess: photos.filter((_, index) => index < start || index >= end),
+    selected: photos.filter((_, index) => !isExcess[index]),
+    excess: photos.filter((_, index) => isExcess[index]),
+    excessDiagnostics,
   }
 }
 
@@ -184,6 +329,14 @@ export function organizeBursts(
   }
 
   const unorderedBursts: Array<Omit<BurstGroup, 'id'>> = []
+  const unorderedExcessDiagnostics: Array<{
+    photoId: string
+    capturedAtMs: number
+    windowStartMs: number
+    windowEndMs: number
+    windowPhotoCount: number
+    retainedPhotoCount: number
+  }> = []
 
   for (const stream of streams.values()) {
     const ordered = [...stream.photos].sort((first, second) =>
@@ -195,13 +348,16 @@ export function organizeBursts(
 
     const finishBurst = () => {
       if (!current.length) return
-      const { selected, excess } = selectBurstPhotos(current)
+      const { selected, excess, excessDiagnostics } = selectBurstPhotos(current)
       unorderedBursts.push({
         cameraLabel: stream.label,
         photos: current,
         selected,
         excess,
       })
+      for (const diagnostic of excessDiagnostics) {
+        unorderedExcessDiagnostics.push(diagnostic)
+      }
       current = []
     }
 
@@ -214,24 +370,12 @@ export function organizeBursts(
         continue
       }
 
-      let end = index + 1
-      while (end < ordered.length && ordered[end].capturedAtMs === timestamp) end += 1
-
-      if (end - index > 1) {
-        finishBurst()
-        for (const tiedPhoto of ordered.slice(index, end)) {
-          review.push({ photo: tiedPhoto, reason: 'ambiguous_sequence' })
-        }
-        index = end
-        continue
-      }
-
       const previous = current[current.length - 1]
       if (previous && timestamp - (previous.capturedAtMs ?? timestamp) > maxGapMs) {
         finishBurst()
       }
       current.push(photo)
-      index = end
+      index += 1
     }
 
     finishBurst()
@@ -246,6 +390,15 @@ export function organizeBursts(
     ...burst,
     id: `RAJADA_${String(index + 1).padStart(4, '0')}`,
   }))
+  const burstByPhotoId = new Map<string, BurstGroup>()
+  for (const burst of bursts) {
+    for (const photo of burst.photos) burstByPhotoId.set(photo.id, burst)
+  }
+  const excessDiagnostics = unorderedExcessDiagnostics.map((diagnostic) => {
+    const burst = burstByPhotoId.get(diagnostic.photoId)
+    if (!burst) throw new Error('Uma fotografia excedente não foi relacionada à sua rajada.')
+    return { ...diagnostic, burstId: burst.id }
+  })
 
   const missingMetadataPhotos = review.filter((item) => item.reason === 'missing_capture_time').length
   const invalidMetadataPhotos = review.filter((item) => item.reason === 'invalid_metadata').length
@@ -259,8 +412,8 @@ export function organizeBursts(
     completePhotos: bursts.reduce((total, burst) => total + burst.selected.length, 0),
     excessPhotos: bursts.reduce((total, burst) => total + burst.excess.length, 0),
     reviewPhotos: review.length,
-    burstsAtOrBelowLimit: bursts.filter((burst) => burst.photos.length <= MAX_PHOTOS_PER_BURST).length,
-    burstsOverLimit: bursts.filter((burst) => burst.photos.length > MAX_PHOTOS_PER_BURST).length,
+    burstsAtOrBelowLimit: bursts.filter((burst) => !burst.excess.length).length,
+    burstsOverLimit: bursts.filter((burst) => burst.excess.length > 0).length,
     missingMetadataPhotos,
     invalidMetadataPhotos,
     ambiguousSequencePhotos,
@@ -275,7 +428,76 @@ export function organizeBursts(
     throw new Error('A classificação não preservou exatamente todas as fotografias.')
   }
 
-  return { bursts, review, duplicates, summary, maxGapMs }
+  return {
+    bursts,
+    review,
+    duplicates,
+    excessDiagnostics,
+    summary,
+    maxGapMs,
+    algorithmVersion: BURST_ALGORITHM_VERSION,
+  }
+}
+
+export function logBurstDiagnostics(
+  photos: PhotoMetadata[],
+  result: BurstOrganization,
+): void {
+  const validCaptureTimePhotos = photos.filter((photo) =>
+    photo.status === 'ready' &&
+    photo.capturedAtMs !== null &&
+    Number.isFinite(photo.capturedAtMs),
+  ).length
+
+  console.info('[PhotoSort] Resumo da análise de rajadas', {
+    analyzedPhotos: photos.length,
+    validCaptureTimePhotos,
+    burstCount: result.summary.burstCount,
+    keptPhotos: result.summary.completePhotos,
+    excessPhotos: result.summary.excessPhotos,
+    reviewPhotos: result.summary.reviewPhotos,
+    fpsLimit: MAX_PHOTOS_PER_WINDOW,
+    fpsWindowMs: FPS_WINDOW_MS,
+    configuredGroupingGapMs: result.maxGapMs,
+  })
+
+  for (const burst of result.bursts) {
+    const times = burst.photos.map((photo) => {
+      if (photo.capturedAtMs === null) {
+        throw new Error(`A fotografia "${photo.name}" não tem horário válido dentro de uma rajada.`)
+      }
+      return photo.capturedAtMs
+    })
+    const intervals = times.slice(1).map((time, index) => time - times[index])
+    let minIntervalMs: number | null = null
+    let maxIntervalMs: number | null = null
+    for (const interval of intervals) {
+      minIntervalMs = minIntervalMs === null ? interval : Math.min(minIntervalMs, interval)
+      maxIntervalMs = maxIntervalMs === null ? interval : Math.max(maxIntervalMs, interval)
+    }
+    console.debug('[PhotoSort] Intervalos da rajada', {
+      burstId: burst.id,
+      camera: burst.cameraLabel,
+      firstCaptureMs: times[0],
+      lastCaptureMs: times[times.length - 1],
+      photoCount: times.length,
+      minIntervalMs,
+      maxIntervalMs,
+    })
+  }
+
+  for (const diagnostic of result.excessDiagnostics) {
+    console.debug('[PhotoSort] Fotografia excedente', {
+      photoId: diagnostic.photoId,
+      burstId: diagnostic.burstId,
+      capturedAtMs: diagnostic.capturedAtMs,
+      reason: `Mais de ${MAX_PHOTOS_PER_WINDOW} fotografias na janela móvel de ${FPS_WINDOW_MS} ms.`,
+      windowStartMs: diagnostic.windowStartMs,
+      windowEndMs: diagnostic.windowEndMs,
+      windowPhotoCount: diagnostic.windowPhotoCount,
+      retainedPhotoCount: diagnostic.retainedPhotoCount,
+    })
+  }
 }
 
 export function classifyBurstPhotos(result: BurstOrganization): BurstPhotoAssignment[] {
@@ -329,15 +551,17 @@ export function buildProcessingReport(result: BurstOrganization): string {
     `FOTOS COMPLETAS: ${summary.completePhotos}`,
     `FOTOS EXCEDENTES: ${summary.excessPhotos}`,
     `FOTOS PARA REVISÃO: ${summary.reviewPhotos}`,
-    `RAJADAS COM ATÉ 10 FOTOS: ${summary.burstsAtOrBelowLimit}`,
-    `RAJADAS COM MAIS DE 10 FOTOS: ${summary.burstsOverLimit}`,
+    `RAJADAS SEM EXCEDENTES: ${summary.burstsAtOrBelowLimit}`,
+    `RAJADAS COM EXCEDENTES: ${summary.burstsOverLimit}`,
     `SEM HORÁRIO DE CAPTURA VÁLIDO: ${summary.missingMetadataPhotos}`,
     `METADADOS INVÁLIDOS: ${summary.invalidMetadataPhotos}`,
     `SEQUÊNCIAS AMBÍGUAS: ${summary.ambiguousSequencePhotos}`,
     `CÓPIAS DUPLICADAS (SHA-256): ${summary.duplicateCopies}`,
     `ARQUIVOS SEM VERIFICAÇÃO DE DUPLICIDADE: ${summary.duplicateCheckUnavailable}`,
-    `INTERVALO MÁXIMO DA RAJADA: ${(result.maxGapMs / 1000).toLocaleString('pt-BR')} s`,
-    `SELEÇÃO ACIMA DE 10: start = ceil((N - 10) / 2); em empate, o excedente é removido do início.`,
+    `INTERVALO MÁXIMO DE AGRUPAMENTO: ${(result.maxGapMs / 1000).toLocaleString('pt-BR')} s`,
+    `LIMITE DE FPS: ${MAX_PHOTOS_PER_WINDOW} fotos em janela móvel de ${FPS_WINDOW_MS} ms.`,
+    'Janelas incluem os extremos: [início, início + 1.000 ms]; cada foto é classificada uma única vez.',
+    'Em uma sequência contida em uma janela, são mantidas as 10 posições centrais; em sobreposição, maximiza-se a seleção e prioriza-se a centralidade.',
     '',
     'As imagens originais foram preservadas sem recompressão.',
     'Nenhuma data de modificação de arquivo foi usada como horário de captura.',

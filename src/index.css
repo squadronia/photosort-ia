@@ -111,6 +111,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 23px; }
 .page-heading h1 { margin: 0 0 7px; font-size: clamp(24px, 2.4vw, 29px); font-weight: 630; letter-spacing: -1.05px; line-height: 1.2; }
 .page-heading p, .muted { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
+.burst-hero { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; padding: 23px 25px; background: radial-gradient(ellipse at 92% 8%, rgba(86, 126, 238, .16), transparent 22rem), var(--surface); }
+.burst-hero-content { position: relative; z-index: 1; }
+.burst-eyebrow { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; color: var(--link); font-size: 9px; font-weight: 700; letter-spacing: 1px; }
+.burst-hero h1 { margin-bottom: 8px; font-size: clamp(28px, 3vw, 36px); letter-spacing: -1.3px; }
+.burst-hero p { max-width: 650px; margin-bottom: 16px; }
+.burst-hero-features { display: flex; flex-wrap: wrap; gap: 8px; }
+.burst-hero-features span { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 99px; padding: 6px 9px; color: var(--muted); background: var(--surface-soft); font-size: 9px; font-weight: 550; }
+.burst-hero-features svg { color: var(--link); }
 .button { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 8px; border: 1px solid transparent; border-radius: 8px; padding: 0 13px; font-size: 11.5px; font-weight: 600; cursor: pointer; transition: background .18s ease, border-color .18s ease, transform .18s ease; }
 .button:active { transform: translateY(1px); }
 .button-primary { border-color: #3a73f6; color: white; background: linear-gradient(135deg, #3c78ff, #3266e8); box-shadow: 0 5px 14px rgba(42,95,223,.15); }
@@ -401,6 +409,7 @@ tbody tr:last-child td { border-bottom: 0; }
   .page-heading { align-items: flex-start; gap: 10px; margin-bottom: 18px; }
   .page-heading h1 { font-size: 23px; }
   .page-heading p { max-width: 520px; font-size: 11px; }
+  .burst-hero { padding: 18px; }
   .metric-grid { gap: 9px; margin-bottom: 23px; }
   .metric-card { padding: 12px; }
   .metric-top { margin-bottom: 11px; }
