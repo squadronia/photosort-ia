@@ -38,6 +38,7 @@ import {
 import { LoginPage } from './auth/LoginPage'
 import { useAuth } from './auth/useAuth'
 import { BrandLogo } from './components/BrandLogo'
+import { HelpPage } from './components/HelpPage'
 import type { AppPreferences, BurstPhotoCategory, EventStatus, PhotoEvent, Theme } from './domain/models'
 import { MAX_PHOTO_BYTES, MAX_PHOTO_SIZE_LABEL } from './config/storage'
 import {
@@ -85,6 +86,7 @@ const navigation = [
     links: [
       { to: '/armazenamento', label: 'Armazenamento', icon: Database },
       { to: '/configuracoes', label: 'Configurações', icon: Settings },
+      { to: '/ajuda', label: 'Como usar o sistema', icon: CircleHelp },
     ],
   },
 ]
@@ -146,6 +148,7 @@ function App() {
   )
   const navigate = useNavigate()
   const location = useLocation()
+  const shouldRenderOrganizer = hasVisitedOrganizer || location.pathname === '/processamentos'
 
   const notify = (message: string) => setToast(message)
   const authUserId = auth.user?.id
@@ -497,10 +500,11 @@ function App() {
                 }
                 path="/configuracoes"
               />
+              <Route element={<HelpPage />} path="/ajuda" />
               <Route element={<Navigate replace to="/" />} path="*" />
             </Routes>
           </div>
-          {hasVisitedOrganizer && (
+          {shouldRenderOrganizer && (
             <div
               className={location.pathname === '/processamentos' ? 'route-transition' : undefined}
               hidden={location.pathname !== '/processamentos'}

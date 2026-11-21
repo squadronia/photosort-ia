@@ -192,6 +192,25 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .quick-link:hover > svg { color: var(--blue); }
 .page-footer { display: flex; justify-content: space-between; gap: 12px; margin-top: 37px; border-top: 1px solid var(--line-soft); padding-top: 13px; color: var(--faint); font-size: 9px; }
 .page-footer span:first-child { font-weight: 600; letter-spacing: .2px; }
+.help-page { display: grid; gap: 14px; }
+.help-page .page-heading { margin-bottom: 0; }
+.help-quick-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.help-quick-links .button { font-size: 10.5px; }
+.help-group { overflow: hidden; padding: 0; }
+.help-group > .section-title { margin: 0; padding: 16px 17px 13px; }
+.help-module { border-top: 1px solid var(--line-soft); }
+.help-module summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 17px; color: var(--text); cursor: pointer; list-style: none; }
+.help-module summary::-webkit-details-marker { display: none; }
+.help-module summary span { font-size: 11.5px; font-weight: 590; }
+.help-module summary svg { flex: none; color: var(--faint); transition: transform .18s ease; }
+.help-module[open] summary { border-bottom: 1px solid var(--line-soft); }
+.help-module[open] summary svg { transform: rotate(180deg); }
+.help-module-body { padding: 13px 17px 16px; color: var(--muted); font-size: 11px; line-height: 1.65; }
+.help-module-body p { margin: 0 0 10px; }
+.help-module-body ul, .help-module-body ol { display: grid; gap: 6px; margin: 0 0 10px; padding-left: 19px; }
+.help-module-body strong { color: var(--text); font-weight: 600; }
+.help-module-body code { border-radius: 4px; padding: 1px 4px; color: var(--text); background: var(--surface-raised); font-size: .95em; }
+.help-module-body > :last-child { margin-bottom: 0; }
 .event-form { display: grid; gap: 14px; }
 .form-panel { padding: 20px; }
 .panel-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 21px; }
