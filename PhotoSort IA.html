@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PhotoSort IA</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e1117;--side:#0a0d13;--card:#141a26;--card2:#1a2234;--line:#252e42;--tx:#e8ecf4;--mu:#8b96ad;--ac:#2f6bff;--vi:#8b6cf0;--ok:#2fbf8a;--wa:#e0a43a;--er:#e0525e;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:dark}
+:root[data-theme=light]{--bg:#f4f6fa;--side:#fff;--card:#fff;--card2:#eef1f7;--line:#dde2ec;--tx:#171c28;--mu:#64708a;color-scheme:light}
+.hdr{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:16px}.dm{margin-right:auto;font-size:12px;padding:3px 10px;border-radius:99px;background:rgba(139,108,240,.18);color:var(--vi);font-weight:500}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 Inter,system-ui,sans-serif;min-height:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+#app{display:flex;min-height:100vh}
+aside{width:240px;background:var(--side);border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;flex:none;z-index:20}
+.logo{display:flex;align-items:center;gap:10px;padding:4px 8px 18px;font-weight:700;font-size:17px}
+.logo b{color:var(--ac)}
+.lg{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--ac),var(--vi));display:grid;place-items:center;color:#fff}
+.grp{color:var(--mu);font-size:12px;margin:16px 10px 6px}
+.nav{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:0;background:none;border-radius:8px;color:var(--mu);cursor:pointer;text-align:left}
+.nav:hover{background:var(--card2);color:var(--tx)}
+.nav.on{background:rgba(47,107,255,.16);color:var(--tx);box-shadow:inset 2px 0 0 var(--ac)}
+.usr{margin-top:auto;display:flex;gap:10px;align-items:center;padding:10px;border-top:1px solid var(--line)}
+.av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--vi),var(--ac));display:grid;place-items:center;font-weight:600}
+main{flex:1;min-width:0;padding:26px 32px 48px;max-width:1400px}
+.top{display:none}
+h1{font-size:24px;margin:0 0 4px;letter-spacing:-.3px}
+h2{font-size:16px;margin:0 0 12px}
+.sub{color:var(--mu);margin:0}
+.hd{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
+.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:18px}
+.g2{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:18px}
+.gc{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card2);cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--ac)}
+.btn.p{background:var(--ac);border-color:var(--ac);color:#fff}
+.btn.p:hover{background:#4a7fff}
+.btn.d{color:var(--er)}
+.btn.s{padding:6px 10px;font-size:13px}
+.big{font-size:28px;font-weight:700;margin-top:4px}
+.ph{background-size:cover;position:relative;overflow:hidden}
+.ev .ph{height:130px}
+.ev{padding:0;overflow:hidden}
+.ev .bd{padding:14px}
+.bdg{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:500}
+.bar{height:7px;background:var(--line);border-radius:9px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--ac),var(--vi));border-radius:9px;transition:width .4s}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tools{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.in{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:9px 12px;min-width:0}
+.in:focus,.btn:focus-visible,.nav:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+.sr{position:relative;flex:1;min-width:200px}.sr input{width:100%;padding-left:36px}.sr svg{position:absolute;left:11px;top:11px;color:var(--mu)}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--mu);font-weight:500;font-size:13px}
+.ov{overflow-x:auto}
+.chart{display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:10px}
+.chart div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;height:100%;color:var(--mu);font-size:12px}
+.chart i{width:100%;background:linear-gradient(var(--ac),#1c3f99);border-radius:5px 5px 0 0}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:34px;text-align:center;cursor:pointer;background:var(--card)}
+.drop.hv{border-color:var(--ac);background:rgba(47,107,255,.08)}
+.th{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-top:14px}
+.th div{aspect-ratio:1;border-radius:8px;background-size:cover;background-position:center;position:relative}
+.th button{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;cursor:pointer;display:grid;place-items:center;padding:0}
+.f{display:grid;grid-template-columns:1fr 1fr;gap:12px}.f label{display:flex;flex-direction:column;gap:5px;color:var(--mu);font-size:13px}.f .w{grid-column:1/-1}
+.tg{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.sw{width:40px;height:22px;border-radius:99px;background:var(--line);border:0;position:relative;cursor:pointer;flex:none}
+.sw:after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
+.sw.on{background:var(--ac)}.sw.on:after{left:21px}
+.pg{display:grid;grid-template-columns:repeat(auto-fill,var(--sz,170px));gap:10px}
+.pg.ls{grid-template-columns:1fr}
+.pc{aspect-ratio:4/3;border-radius:10px;cursor:pointer;border:2px solid transparent}
+.pg.ls .pc{aspect-ratio:auto;height:64px;display:flex;align-items:center;padding:0 14px;justify-content:space-between}
+.pc.sel{border-color:var(--ac)}
+.pc .ac{position:absolute;top:6px;right:6px;display:flex;gap:5px}
+.pg.ls .pc .ac{position:static}
+.ib{width:28px;height:28px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;display:grid;place-items:center;cursor:pointer;padding:0}
+.ib.on{color:#ff5d8f}.ib.on svg{fill:currentColor}
+.pc .tl{position:absolute;left:8px;bottom:6px;font-size:12px;text-shadow:0 1px 3px #000}
+.md{position:fixed;inset:0;background:rgba(5,8,14,.82);display:grid;place-items:center;z-index:50;padding:20px}
+.mb{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;width:min(440px,100%)}
+.lb{width:min(900px,100%);padding:14px}.lb .im{aspect-ratio:3/2;border-radius:10px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:18px;overflow-x:auto}
+.tabs button{background:none;border:0;padding:10px 14px;color:var(--mu);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button.on{color:var(--tx);border-color:var(--ac)}
+#toast{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;z-index:60}
+#toast div{background:var(--card2);border:1px solid var(--line);border-left:3px solid var(--ok);padding:10px 14px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.empty{text-align:center;color:var(--mu);padding:40px}
+.menu{position:relative}.menu .pop{position:absolute;right:0;top:34px;background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:4px;z-index:5;min-width:150px}
+.menu .pop button{display:block;width:100%;text-align:left;background:none;border:0;padding:8px 10px;border-radius:6px;cursor:pointer}.menu .pop button:hover{background:var(--line)}
+.tree{border-left:1px solid var(--line);margin-left:14px;padding-left:16px}
+@media(max-width:900px){aside{position:fixed;left:-260px;transition:left .25s}aside.open{left:0}.top{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:10}main{padding:18px 16px 40px}.g2{grid-template-columns:1fr}.f{grid-template-columns:1fr}#app{flex-direction:column}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+<div class="top"><button class="btn s" onclick="document.querySelector('aside').classList.toggle('open')" aria-label="Menu"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><b>PhotoSort IA</b></div>
+<aside id="side"></aside>
+<main id="main"></main>
+</div>
+<div id="toast"></div>
+<script>
+const P={home:'<path d="M3 10l9-7 9 7v10a1 1 0 01-1 1h-5v-7H9v7H4a1 1 0 01-1-1z"/>',plus:'<path d="M12 5v14M5 12h14"/>',cal:'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',img:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/>',users:'<circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0114 0M16 4a4 4 0 010 8M22 21a7 7 0 00-4-6"/>',act:'<path d="M3 12h4l3-8 4 16 3-8h4"/>',fold:'<path d="M3 6a2 2 0 012-2h4l2 2h8a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>',gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>',help:'<circle cx="12" cy="12" r="10"/><path d="M9 9a3 3 0 115 2c-1 1-2 1-2 3M12 18v.01"/>',search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/>',heart:'<path d="M20 8c0 6-8 12-8 12S4 14 4 8a4 4 0 018-1 4 4 0 018 1z"/>',x:'<path d="M18 6L6 18M6 6l12 12"/>',up:'<path d="M12 16V4M6 10l6-6 6 6M4 20h16"/>',grid:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>',list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',dots:'<path d="M5 12h.01M12 12h.01M19 12h.01"/>',l:'<path d="M15 18l-6-6 6-6"/>',r:'<path d="M9 18l6-6-6-6"/>',dl:'<path d="M12 4v12M6 10l6 6 6-6M4 20h16"/>',cam:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/><path d="M19 3v3M17.5 4.5h3"/>',chk:'<path d="M5 12l5 5L20 7"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/>',moon:'<path d="M20 14A8 8 0 0110 4a8 8 0 1010 10z"/>'};
+const I=n=>`<svg class="i" viewBox="0 0 24 24">${P[n]}</svg>`;
+const ST={wait:['Aguardando imagens','#8b96ad'],ready:['Pronto para processar','#e0a43a'],proc:['Em processamento (demo)','#2f6bff'],done:['Concluído','#2fbf8a'],err:['Com erro','#e0525e']};
+const bd=s=>`<span class="bdg" style="background:${ST[s][1]}22;color:${ST[s][1]}">${ST[s][0]}</span>`;
+const DEMO=[{n:'Corrida da Ponte 10K',c:'Corrida de rua',d:'2026-10-18',p:1840,pe:212,s:'done',h:210},{n:'Casamento Helena e Rafael',c:'Casamento',d:'2026-10-03',p:962,pe:148,s:'proc',h:330,pr:64},{n:'Formatura Medicina UFMA',c:'Formatura',d:'2026-09-20',p:1320,pe:0,s:'ready',h:260},{n:'Copa Maranhão de Vôlei',c:'Evento esportivo',d:'2026-09-06',p:2410,pe:305,s:'done',h:170},{n:'Summit Tech São Luís',c:'Evento corporativo',d:'2026-11-08',p:0,pe:0,s:'wait',h:195},{n:'Maratona do Litoral',c:'Corrida de rua',d:'2026-08-23',p:640,pe:0,s:'err',h:20}];
+const fmt=d=>d.split('-').reverse().join('/');
+const bg=(h,i=0)=>`background-image:radial-gradient(circle at ${30+(i*17)%45}% 62%,hsl(${h} 30% 62%) 0 9%,transparent 10%),radial-gradient(ellipse at ${30+(i*17)%45}% 118%,hsl(${h} 35% 45%) 0 26%,transparent 27%),linear-gradient(${120+i*23}deg,hsl(${h} 45% 30%),hsl(${(h+50)%360} 50% 12%))`;
+const PH=Array.from({length:42},(_,i)=>{const e=[0,1,3,2][i%4];return{id:i,e,h:(DEMO[e].h+i*9)%360,pe:i%8}});
+const PE=Array.from({length:8},(_,i)=>({id:'P-00'+(i+1),h:(i*43+200)%360,f:[34,28,51,19,42,23,37,15][i],s:[10,10,10,8,10,9,10,6][i],st:i<5?'done':i<7?'ready':'wait'}));
+const PS=n=>Array.from({length:Math.min(n,18)},(_,i)=>({id:i,h:(i*37+PE[cur.p].h)%360}));
+let S={fav:[],sel:[],del:[],delP:[],real:[],freed:0,demoData:true,theme:'dark',cfg:{demoMode:true,lim:10,dest:true,nit:true,rep:true,rosto:true,notif:true,acc:'#2f6bff',name:'Fotógrafo'},ex:[]};
+try{const x=JSON.parse(localStorage.getItem('ps')||'null');if(x)S=Object.assign(S,x)}catch(e){}
+const save=()=>{try{localStorage.setItem('ps',JSON.stringify(S))}catch(e){}};
+S.cfg=Object.assign({demoMode:true},S.cfg);
+/* Serviços independentes. Cada função local será trocada por Supabase (Storage + Postgres, coluna is_demo) quando houver backend. */
+let E=[];const MB=4.5;
+const loadE=()=>{E=(S.demoData?DEMO.map(x=>({...x,isDemo:true})):[]).concat(S.real)};
+const sync=()=>{S.real=E.filter(e=>!e.isDemo);save()};
+const DP=()=>S.demoData?PH.filter(p=>!S.del.includes(p.id)):[];
+const DE=()=>S.demoData?PE.map((p,i)=>({...p,i})).filter(p=>!S.delP.includes(p.id)):[];
+const Svc={
+theme:{set(t){S.theme=t;document.documentElement.dataset.theme=t;save()},toggle(){this.set(S.theme=='dark'?'light':'dark');render()}},
+storage:{used:()=>Math.max(0,E.reduce((a,e)=>a+e.p*MB,0)-S.del.length*MB),fmt:m=>m>=1024?(m/1024).toFixed(1).replace('.',',')+' GB':Math.round(m)+' MB'},
+events:{remove(i){const e=E.splice(i,1)[0];S.freed+=e.p*MB;sync();return e}},
+demo:{clear(){E=E.filter(e=>!e.isDemo);S.demoData=false;S.fav=[];S.sel=[];S.del=[];S.delP=[];S.ex=[];save()},restore(){S.demoData=true;S.del=[];S.delP=[];loadE();save()}}
+};
+const NOTE='Nesta versão apenas registros locais são removidos. Com o Supabase conectado, originais, miniaturas, selecionadas, derivados e registros do banco serão removidos juntos.';
+const hdr=()=>`<div class="hdr">${S.cfg.demoMode?'<span class="dm">Modo de demonstração</span>':''}<button class="btn s" onclick="Svc.theme.toggle()" aria-label="Alternar tema">${I(S.theme=='dark'?'sun':'moon')}${S.theme=='dark'?'Claro':'Escuro'}</button></div>`;
+const cfm=(t,m,a)=>modal(`<div class="mb"><h2>${t}</h2><p class="sub">${m}</p><div class="row" style="justify-content:flex-end;margin-top:18px"><button class="btn" onclick="this.closest('.md').remove()">Cancelar</button><button class="btn d" onclick="document.querySelectorAll('.md').forEach(m=>m.remove());${a}">Excluir</button></div></div>`);
+function rmEv(i,b){const e=Svc.events.remove(i);b.closest('.md').remove();toast('Evento excluído. Espaço liberado (estimado): '+Svc.storage.fmt(e.p*MB));render()}
+function delPh(id){cfm('Excluir fotografia?','Esta operação não poderá ser desfeita. '+NOTE,`S.del.push(${id});S.freed+=MB;save();toast('Fotografia excluída. Liberado: 4,5 MB (estimado)');render()`)}
+function delFolder(id){cfm('Excluir pasta de '+id+'?','A pasta e a seleção desta pessoa serão removidas. Não poderá ser desfeito. '+NOTE,`S.delP.push('${id}');S.freed+=9*MB;save();toast('Pasta excluída. Liberado: 40 MB (estimado)');render()`)}
+function confDemo(){cfm('Limpar demonstração?','Remove eventos, pessoas, fotografias, pastas, seleções e históricos fictícios. Seus registros reais são preservados.',`Svc.demo.clear();toast('Demonstração removida');render()`)}
+function demoTab(){const d=E.filter(e=>e.isDemo).length;return tg('demoMode','Ativar modo de demonstração (exibe a identificação no topo)')+`<p class="sub" style="margin:14px 0">Dados demonstrativos: ${S.demoData?d+' eventos, '+DE().length+' pessoas, '+DP().length+' fotografias':'removidos'}. Registros reais: ${E.length-d} eventos. A limpeza remove somente registros marcados como demonstrativos (isDemo). Os resultados exibidos são fictícios e não representam análise real de IA.</p><div class="row"><button class="btn d" onclick="confDemo()">Limpar demonstração</button><button class="btn p" onclick="Svc.demo.restore();toast('Demonstração restaurada');render()">Restaurar demonstração</button></div>`}
+let cur={p:null,files:[],q:'',cat:'',ord:'new',ev:'',sz:170,view:'g',tab:'Perfil',pf:''};
+function toast(m,err){const t=document.createElement('div');t.textContent=m;if(err)t.style.borderLeftColor='#e0525e';$('#toast').append(t);setTimeout(()=>t.remove(),2600)}
+const $=s=>document.querySelector(s);
+const NAV=[['Menu principal'],['visao','Visão geral','home'],['novo','Novo processamento','plus'],['eventos','Meus eventos','cal'],['galeria','Galeria de fotografias','img'],['pessoas','Pessoas identificadas','users'],['Gerenciamento'],['processos','Processamentos','act'],['pastas','Pastas e seleções','fold'],['Sistema'],['config','Configurações','gear'],['ajuda','Ajuda e suporte','help']];
+const route=()=>(location.hash.slice(1)||'visao');
+function side(){const r=route();$('#side').innerHTML=`<div class="logo"><div class="lg">${I('cam')}</div><span>PhotoSort <b>IA</b></span></div>`+NAV.map(n=>n.length==1?`<div class="grp">${n[0]}</div>`:`<button class="nav ${r==n[0]?'on':''}" onclick="go('${n[0]}')">${I(n[2])}${n[1]}</button>`).join('')+`<div class="usr"><div class="av">${S.cfg.name[0]}</div><div style="flex:1"><b>${S.cfg.name}</b><div class="sub" style="font-size:12px">Plano Pro</div></div><button class="ib" style="background:var(--card2)" onclick="go('config')" aria-label="Configurações da conta">${I('gear')}</button></div>`}
+function go(r){location.hash=r;document.querySelector('aside').classList.remove('open')}
+const dc=(l,v,s)=>`<div class="card"><div class="sub">${l}</div><div class="big">${v}</div><div class="sub" style="font-size:12px;color:var(--ok)">${s}</div></div>`;
+const hd=(t,s,a='')=>`<div class="hd"><div><h1>${t}</h1><p class="sub">${s}</p></div>${a}</div>`;
+const search=(id,v,ph)=>`<div class="sr">${I('search')}<input class="in" id="${id}" value="${v}" placeholder="${ph}"></div>`;
+const evCard=(e,i)=>`<div class="card ev"><div class="ph" style="${bg(e.h,i)};height:130px"></div><div class="bd"><div class="row" style="justify-content:space-between"><b>${e.n}</b><div class="menu"><button class="ib" style="background:var(--card2)" onclick="pop(event,${i})" aria-label="Opções">${I('dots')}</button></div></div><div class="sub">${e.c} • ${fmt(e.d)}</div><div class="row" style="margin:10px 0">${bd(e.s)}</div><div class="sub">${e.p.toLocaleString('pt-BR')} fotos • ${e.pe} pessoas</div><button class="btn s p" style="margin-top:12px" onclick="openEv(${i})">Abrir evento</button></div></div>`;
+function pop(ev,i){ev.stopPropagation();document.querySelectorAll('.pop').forEach(p=>p.remove());const m=document.createElement('div');m.className='pop';m.innerHTML=`<button onclick="openEv(${i})">Abrir evento</button><button onclick="toast('Evento duplicado (demo)')">Duplicar</button><button style="color:var(--er)" onclick="conf(${i})">Excluir</button>`;ev.currentTarget.parentNode.append(m)}
+document.addEventListener('click',()=>document.querySelectorAll('.pop').forEach(p=>p.remove()));
+function openEv(i){cur.ev=String(i);go('galeria')}
+function modal(h){const m=document.createElement('div');m.className='md';m.innerHTML=h;m.onclick=e=>{if(e.target==m)m.remove()};document.body.append(m);return m}
+function conf(i){modal(`<div class="mb"><h2>Excluir evento?</h2><p class="sub">“${E[i].n}” e tudo que pertence a ele serão excluídos. <b>Esta operação não poderá ser desfeita.</b> ${NOTE}</p><button class="btn s" style="margin-top:12px" onclick="toast('Download do evento completo exige o armazenamento conectado (Supabase)',1)">${I('dl')}Baixar evento completo</button><div class="row" style="justify-content:flex-end;margin-top:18px"><button class="btn" onclick="this.closest('.md').remove()">Cancelar</button><button class="btn d" onclick="rmEv(${i},this)">Excluir definitivamente</button></div></div>`)}
+const V={
+visao(){const h=new Date().getHours(),g=h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';const tp=E.reduce((a,e)=>a+e.p,0),tpe=E.reduce((a,e)=>a+e.pe,0);
+return hd(`${g}, ${S.cfg.name}`,'Acompanhe seus eventos e organize suas fotografias com inteligência.',`<button class="btn p" onclick="go('novo')">${I('plus')}Novo processamento</button>`)+
+`<div class="g4">${dc('Total de eventos',E.length,'+2 neste mês')}${dc('Fotografias importadas',tp.toLocaleString('pt-BR'),'+1.840 esta semana')}${dc('Pessoas identificadas',tpe,'dados de demonstração')}${dc('Fotografias selecionadas',(tpe*8).toLocaleString('pt-BR'),'até '+S.cfg.lim+' por pessoa')}</div>
+<div class="g2"><div class="card ov"><h2>Atividades recentes</h2><table><tr><th>Evento</th><th>Criado em</th><th>Fotos</th><th>Status</th><th>Pessoas</th></tr>${E.slice(0,5).map(e=>`<tr><td>${e.n}</td><td>${fmt(e.d)}</td><td>${e.p}</td><td>${bd(e.s)}</td><td>${e.pe}</td></tr>`).join('')}</table></div>
+<div class="card"><h2>Fotografias processadas</h2><div class="chart">${[['Jun',40],['Jul',62],['Ago',35],['Set',88],['Out',100],['Nov',20]].map(m=>`<div><i style="height:${S.demoData?m[1]:0}%"></i>${m[0]}</div>`).join('')}</div></div></div>
+<h2>Seus últimos eventos</h2><div class="gc" style="margin-bottom:18px">${E.slice(0,3).map((e,i)=>evCard(e,i)).join('')}</div>
+<div class="g2"><div class="card"><h2>Histórico de atividades</h2>${(S.demoData?['Importação concluída: Corrida da Ponte 10K','Seleção exportada: Pessoa 004','Evento criado: Summit Tech São Luís','Fotografias favoritadas: 12']:[]).map((t,i)=>`<div class="tg"><span>${t}</span><span class="sub">há ${i*2+1} h</span></div>`).join('')}</div>
+<div class="card"><h2>Atalhos rápidos</h2><div style="display:grid;gap:8px">${[['novo','Importar fotografias','up'],['pessoas','Ver pessoas','users'],['pastas','Exportar seleções','dl'],['config','Ajustar seleção','gear']].map(a=>`<button class="btn" onclick="go('${a[0]}')">${I(a[2])}${a[1]}</button>`).join('')}</div></div></div>`},
+novo(){const n=cur.files.length;return hd('Novo processamento','Crie um evento, importe as fotografias e defina as regras de seleção.')+
+`<div class="card" style="margin-bottom:18px"><h2>Dados do evento</h2><div class="f"><label class="w">Nome do evento<input class="in" id="nm" placeholder="Ex.: Corrida da Ponte 10K"></label><label>Tipo de evento<select class="in" id="tp">${['Corrida de rua','Evento esportivo','Casamento','Formatura','Evento corporativo','Outros'].map(t=>`<option>${t}</option>`).join('')}</select></label><label>Data do evento<input class="in" type="date" id="dt"></label><label class="w">Descrição (opcional)<textarea class="in" rows="2" id="ds"></textarea></label></div></div>
+<div class="drop" id="dz" onclick="$('#fi').click()">${I('up').replace('class="i"','class="i" style="width:40px;height:40px;color:var(--ac)"')}<h2 style="margin-top:10px">Arraste as fotografias aqui</h2><p class="sub">Formatos aceitos: JPG, JPEG, PNG e WEBP</p><button class="btn p" style="margin-top:10px" onclick="event.stopPropagation();$('#fi').click()">Selecionar fotografias</button><input type="file" id="fi" multiple accept=".jpg,.jpeg,.png,.webp" hidden></div>
+<div class="row" style="justify-content:space-between;margin:14px 0 0"><b>${n} imagem(ns) selecionada(s)</b>${n?`<button class="btn s" onclick="cur.files.forEach(f=>URL.revokeObjectURL(f.u));cur.files=[];render()">Remover todas</button>`:''}</div>
+<div class="th">${cur.files.slice(0,120).map((f,i)=>`<div style="background-image:url(${f.u})"><button onclick="rmF(${i})" aria-label="Remover">${I('x').replace('class="i"','class="i" style="width:12px;height:12px"')}</button></div>`).join('')}</div>
+<div class="card" style="margin:18px 0"><h2>Configurações de seleção</h2><div class="tg"><span>Limite de fotografias por pessoa</span><input class="in" type="number" min="1" max="50" style="width:80px" value="${S.cfg.lim}" onchange="S.cfg.lim=+this.value;save()"></div>${tg('dest','Priorizar pessoas em destaque')}${tg('nit','Priorizar fotografias com boa nitidez')}${tg('rep','Evitar imagens repetidas')}${tg('rosto','Considerar qualidade e visibilidade do rosto')}</div>
+<div id="run"><button class="btn p" onclick="runProc()">Iniciar processamento</button></div>`},
+eventos(){let l=E.map((e,i)=>({e,i})).filter(x=>x.e.n.toLowerCase().includes(cur.q.toLowerCase())&&(!cur.cat||x.e.c==cur.cat)&&(!cur.d||x.e.d>=cur.d));l.sort((a,b)=>cur.ord=='new'?b.e.d.localeCompare(a.e.d):a.e.d.localeCompare(b.e.d));
+return hd('Meus eventos','Biblioteca dos seus eventos fotográficos.',`<button class="btn p" onclick="go('novo')">${I('plus')}Novo evento</button>`)+`<div class="tools">${search('q',cur.q,'Buscar por nome')}<select class="in" id="cat"><option value="">Todas as categorias</option>${[...new Set(E.map(e=>e.c))].map(c=>`<option ${cur.cat==c?'selected':''}>${c}</option>`).join('')}</select><input class="in" type="date" id="dd" value="${cur.d||''}" title="A partir de"><select class="in" id="ord"><option value="new">Mais recentes</option><option value="old" ${cur.ord=='old'?'selected':''}>Mais antigos</option></select></div>`+(l.length?`<div class="gc">${l.map(x=>evCard(x.e,x.i)).join('')}</div>`:`<div class="empty">Nenhum evento encontrado. Ajuste os filtros ou crie um novo evento.</div>`)},
+galeria(){let l=DP().filter(p=>(cur.ev===''||p.e==cur.ev)&&(('foto '+(p.id+1)).includes(cur.q.toLowerCase())||E[p.e].n.toLowerCase().includes(cur.q.toLowerCase()))&&(!cur.d||E[p.e].d>=cur.d));window._l=l;
+return hd('Galeria de fotografias',`${l.length} fotografias${S.sel.length?` • ${S.sel.length} selecionadas`:''}`,S.sel.length?`<div class="row"><button class="btn" onclick="S.fav=[...new Set([...S.fav,...S.sel])];S.sel=[];save();toast('Adicionadas aos favoritos');render()">${I('heart')}Favoritar</button><button class="btn" onclick="S.sel=[];save();render()">Limpar seleção</button></div>`:'')+
+`<div class="tools">${search('q',cur.q,'Buscar fotografia ou evento')}<select class="in" id="ev"><option value="">Todos os eventos</option>${(S.demoData?E.slice(0,4):[]).map((e,i)=>`<option value="${i}" ${cur.ev==String(i)?'selected':''}>${e.n}</option>`).join('')}</select><input class="in" type="date" id="dd" value="${cur.d||''}"><input type="range" min="120" max="260" value="${cur.sz}" id="sz" aria-label="Tamanho"><button class="btn s" onclick="cur.view='g';render()">${I('grid')}</button><button class="btn s" onclick="cur.view='l';render()">${I('list')}</button></div>`+
+(l.length?`<div class="pg ${cur.view=='l'?'ls':''}" style="--sz:${cur.sz}px">${l.map((p,k)=>pcard(p,k)).join('')}</div>`:`<div class="empty">Nenhuma fotografia encontrada.</div>`)},
+pessoas(){if(cur.p!==null)return pdet();return hd('Pessoas identificadas','Grupos de pessoas sugeridos para revisão. Dados fictícios de demonstração.')+`<div class="gc">${PE.map((p,i)=>!DE().some(d=>d.i==i)?'':`<div class="card"><div class="row"><div class="av" style="width:56px;height:56px;${bg(p.h,i)}"></div><div><b>Pessoa ${p.id.slice(2)}</b><div class="sub">${p.id}</div></div></div><div class="row" style="margin:12px 0;justify-content:space-between"><span class="sub">${p.f} encontradas</span><span class="sub">${S.ex.includes(p.id)?'Exportada':p.s+' selecionadas'}</span></div>${bd(p.st)}<br><button class="btn s p" style="margin-top:12px" onclick="cur.p=${i};render()">Ver fotografias</button></div>`).join('')}</div>${DE().length?'':'<div class="empty">Nenhuma pessoa identificada. Importe um evento ou restaure a demonstração em Configurações.</div>'}`},
+processos(){const f=cur.pf;const l=E.filter(e=>!f||e.s==f);return hd('Processamentos','Acompanhe o andamento. Progresso e tempo são simulados para demonstração.')+`<div class="tools"><select class="in" id="pf"><option value="">Todos os status</option>${Object.keys(ST).map(k=>`<option value="${k}" ${f==k?'selected':''}>${ST[k][0]}</option>`).join('')}</select></div><div class="card ov"><table><tr><th>Evento</th><th>Imagens</th><th>Início</th><th>Status</th><th style="width:220px">Progresso</th><th>Tempo (demo)</th></tr>${l.map(e=>{const p=e.s=='done'?100:e.s=='proc'?e.pr:e.s=='err'?31:0;return`<tr><td>${e.n}</td><td>${e.p}</td><td>${fmt(e.d)}</td><td>${bd(e.s)}</td><td><div class="bar"><i style="width:${p}%"></i></div></td><td class="sub">${e.s=='proc'?'~12 min (fictício)':'—'}</td></tr>`}).join('')}</table></div>`},
+pastas(){return hd('Pastas e seleções','Uma pasta por pessoa, organizada por evento.')+E.filter(e=>e.pe>0).map((e,k)=>`<div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><div class="row">${I('fold')}<b>${e.n}</b></div><button class="btn s" onclick="S.ex.push(...PE.map(p=>p.id));save();toast('Seleções do evento exportadas (demo)')">${I('dl')}Exportar evento</button></div><div class="tree">${DE().slice(0,4).map((p,i)=>`<div class="tg"><div class="row"><div style="width:44px;height:34px;border-radius:6px;${bg(p.h+k*20,i)}"></div><div><b>Pessoa ${p.id.slice(2)}</b><div class="sub" style="font-size:12px">${p.s} fotografias • criada em ${fmt(e.d)}</div></div></div><div class="row"><button class="btn s" onclick="cur.p=${p.i};go('pessoas')">Abrir</button><button class="btn s" onclick="toast('Pasta ${p.id} exportada (demo)')">Exportar</button><button class="btn s d" onclick="delFolder('${p.id}')">Excluir</button></div></div>`).join('')}</div></div>`).join('')},
+config(){const T=['Perfil','Preferências','Aparência','Configurações de seleção','Armazenamento','Demonstração','Conta e plano'];let b='';const t=cur.tab;
+if(t=='Perfil')b=`<div class="f"><label>Nome<input class="in" id="pn" value="${S.cfg.name}"></label><label>E-mail<input class="in" value="contato@exemplo.com"></label></div><button class="btn p" style="margin-top:14px" onclick="S.cfg.name=$('#pn').value||'Fotógrafo';save();side();toast('Perfil salvo')">Salvar alterações</button>`;
+if(t=='Preferências')b=tg('notif','Notificações de processamento')+tg('rep','Alertar sobre imagens repetidas');
+if(t=='Aparência')b=`<div class="tg"><span>Cor de destaque</span><div class="row">${['#2f6bff','#8b6cf0','#2fbf8a','#e0a43a'].map(c=>`<button class="ib" style="background:${c};outline:${S.cfg.acc==c?'2px solid var(--tx)':'none'}" onclick="S.cfg.acc='${c}';acc();save();render()" aria-label="${c}"></button>`).join('')}</div></div><div class="tg"><span>Tema</span><button class="btn s" onclick="Svc.theme.toggle()">${S.theme=='dark'?'Escuro • alternar para claro':'Claro • alternar para escuro'}</button></div>`;
+if(t=='Configurações de seleção')b=`<div class="tg"><span>Limite por pessoa</span><input class="in" type="number" style="width:80px" value="${S.cfg.lim}" onchange="S.cfg.lim=+this.value;save();toast('Limite atualizado')"></div>`+tg('dest','Priorizar pessoas em destaque')+tg('nit','Priorizar nitidez')+tg('rosto','Considerar visibilidade do rosto');
+if(t=='Armazenamento')b=`<p class="sub">${Svc.storage.fmt(Svc.storage.used())} de 100 GB usados (estimativa local)</p><div class="bar" style="margin:10px 0"><i style="width:${Math.min(100,Svc.storage.used()/1024)}%"></i></div><p class="sub" style="margin-bottom:16px">Espaço liberado por exclusões: ${Svc.storage.fmt(S.freed)}. Estimativa de 4,5 MB por fotografia; o valor real virá do armazenamento conectado.</p><button class="btn" onclick="toast('Cache limpo (demo)')">Limpar cache local</button>`;
+if(t=='Conta e plano')b=`<div class="tg"><span><b>Plano Pro</b><div class="sub">Eventos ilimitados (demonstração)</div></span><button class="btn" onclick="toast('Disponível com o backend')">Gerenciar plano</button></div>`;
+if(t=='Demonstração')b=demoTab();
+return hd('Configurações','Personalize o PhotoSort IA.')+`<div class="tabs">${T.map(x=>`<button class="${x==t?'on':''}" onclick="cur.tab='${x}';render()">${x}</button>`).join('')}</div><div class="card">${b}</div>`},
+ajuda(){return hd('Ajuda e suporte','Respostas rápidas para começar.')+`<div class="gc">${[['Como criar um evento','Vá em Novo processamento, preencha os dados e importe as fotografias.'],['Como exportar seleções','Em Pastas e seleções, use Exportar na pasta ou no evento.'],['Sobre a IA','O reconhecimento de pessoas ainda não está ativo. Esta versão é uma demonstração visual.']].map(a=>`<div class="card"><h2>${a[0]}</h2><p class="sub">${a[1]}</p></div>`).join('')}</div>`}};
+function tg(k,l){return`<div class="tg"><span>${l}</span><button class="sw ${S.cfg[k]?'on':''}" role="switch" aria-checked="${!!S.cfg[k]}" onclick="S.cfg.${k}=!S.cfg.${k};save();render()"></button></div>`}
+function pcard(p,k){const f=S.fav.includes(p.id),s=S.sel.includes(p.id);return`<div class="pc ph ${s?'sel':''}" style="${bg(p.h,p.id)}" onclick="lb(${k})"><div class="tl">Foto ${p.id+1}${cur.view=='l'?' • '+E[p.e].n:''}</div><div class="ac"><button class="ib ${s?'on':''}" onclick="event.stopPropagation();tgl('sel',${p.id})" aria-label="Selecionar">${I('chk')}</button><button class="ib ${f?'on':''}" onclick="event.stopPropagation();tgl('fav',${p.id})" aria-label="Favoritar">${I('heart')}</button></div></div>`}
+function tgl(k,id){const a=S[k],i=a.indexOf(id);i<0?a.push(id):a.splice(i,1);save();render()}
+function lb(k){const l=window._l,p=l[k];const f=S.fav.includes(p.id);const m=modal(`<div class="mb lb"><div class="im ph" style="${bg(p.h,p.id)}"></div><div class="row" style="justify-content:space-between;margin-top:12px"><div><b>Foto ${p.id+1}</b><div class="sub">${E[p.e].n}</div></div><div class="row"><button class="btn s" ${k?'':'disabled'} onclick="this.closest('.md').remove();lb(${k-1})">${I('l')}</button><button class="btn s" onclick="tgl('fav',${p.id});this.closest('.md').remove();lb(${k})">${I('heart')}${f?'Desfavoritar':'Favoritar'}</button><button class="btn s" ${k<l.length-1?'':'disabled'} onclick="this.closest('.md').remove();lb(${k+1})">${I('r')}</button><button class="btn s d" onclick="delPh(${p.id})">${I('x')}Excluir</button><button class="btn s" onclick="this.closest('.md').remove()">${I('x')}</button></div></div></div>`)}
+function pdet(){const p=PE[cur.p],ph=PS(p.f).map(x=>({...x,id:100+cur.p*20+x.id,e:0}));const best=ph.slice(0,S.cfg.lim);return hd('Pessoa '+p.id.slice(2),`${p.id} • ${p.f} fotografias encontradas • ${best.length} selecionadas`,`<div class="row"><button class="btn" onclick="cur.p=null;render()">${I('l')}Voltar</button><button class="btn p" onclick="S.ex.push(p_='${p.id}');save();toast('Seleção exportada (demo)')">${I('dl')}Exportar seleção</button></div>`)+`<h2>Melhores imagens</h2><div class="pg" style="--sz:170px">${ph.map((x,k)=>{const rm=S.sel.includes('x'+x.id),f=S.fav.includes(x.id);return`<div class="pc ph" style="${bg(x.h,x.id)};${rm?'opacity:.35':''}"><div class="tl">${k<best.length?'Selecionada':'Candidata'}</div><div class="ac"><button class="ib" onclick="tgl('sel','x${x.id}')" aria-label="${rm?'Adicionar':'Remover'}">${I(rm?'plus':'x')}</button><button class="ib ${f?'on':''}" onclick="tgl('fav',${x.id})">${I('heart')}</button></div></div>`}).join('')}</div>`}
+function rmF(i){URL.revokeObjectURL(cur.files[i].u);cur.files.splice(i,1);render()}
+function addF(fs){[...fs].filter(f=>/\.(jpe?g|png|webp)$/i.test(f.name)).forEach(f=>cur.files.push({u:URL.createObjectURL(f)}));render()}
+function runProc(){const nm=$('#nm').value.trim();if(!nm)return toast('Informe o nome do evento',1);if(!cur.files.length)return toast('Importe ao menos uma fotografia',1);let p=0;const r=$('#run');r.innerHTML=`<div class="card"><b>Simulação de processamento</b><p class="sub">Demonstração visual. Nenhuma análise real é feita nesta versão.</p><div class="bar"><i id="pb" style="width:0"></i></div><div class="sub" id="pt" style="margin-top:8px">Preparando imagens…</div></div>`;const L=['Preparando imagens…','Analisando nitidez (simulado)…','Agrupando pessoas (simulado)…','Montando seleções (simulado)…'];const t=setInterval(()=>{p+=5;$('#pb').style.width=p+'%';$('#pt').textContent=L[Math.min(3,p/25|0)];if(p>=100){clearInterval(t);E.push({isDemo:false,n:nm,c:$('#tp').value,d:$('#dt').value||new Date().toISOString().slice(0,10),p:cur.files.length,pe:0,s:'ready',h:240});sync();toast('Evento criado: '+nm);cur.files=[];go('eventos')}},150)}
+function acc(){document.documentElement.style.setProperty('--ac',S.cfg.acc)}
+function render(){side();$('#main').innerHTML=hdr()+(V[route()]||V.visao)();bind();window.scrollTo(0,0===0?window.scrollY:0)}
+function bind(){const b=(id,fn)=>{const e=$('#'+id);if(e)e.oninput=fn};b('q',e=>{cur.q=e.target.value;rr('q')});['cat','ev','ord','pf'].forEach(i=>{const e=$('#'+i);if(e)e.onchange=()=>{cur[i]=e.value;render()}});const d=$('#dd');if(d)d.onchange=()=>{cur.d=d.value;render()};const z=$('#sz');if(z)z.oninput=()=>{cur.sz=+z.value;$('.pg').style.setProperty('--sz',cur.sz+'px')};const fi=$('#fi');if(fi)fi.onchange=()=>addF(fi.files);const dz=$('#dz');if(dz){['dragover','dragenter'].forEach(t=>dz.addEventListener(t,e=>{e.preventDefault();dz.classList.add('hv')}));dz.addEventListener('dragleave',()=>dz.classList.remove('hv'));dz.addEventListener('drop',e=>{e.preventDefault();addF(e.dataTransfer.files)})}}
+function rr(id){render();const e=$('#'+id);if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length)}}
+addEventListener('hashchange',()=>{cur.p=null;cur.q='';render();window.scrollTo(0,0)});
+Svc.theme.set(S.theme);loadE();acc();render();
+</script>
+</body>
+</html>

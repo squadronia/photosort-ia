@@ -1,0 +1,26 @@
+{
+  "name": "PhotoSort",
+  "short_name": "PhotoSort",
+  "description": "Organização profissional de fotografias por rajadas.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d1320",
+  "theme_color": "#0d1320",
+  "icons": [
+    {
+      "src": "/brand/photosort-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/brand/photosort-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/brand/photosort-app-icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ]
+}

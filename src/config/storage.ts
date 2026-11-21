@@ -1,0 +1,3 @@
+export const MAX_PHOTO_BYTES = 50 * 1024 * 1024
+export const MAX_PHOTO_SIZE_LABEL = '50 MB'
+export const RESUMABLE_UPLOAD_THRESHOLD_BYTES = 6 * 1024 * 1024
