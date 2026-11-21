@@ -30,9 +30,39 @@ import { estimateTemporaryMode } from './storageBudget'
 type Phase = 'idle' | 'analyzing' | 'cancelling' | 'ready' | 'archiving' | 'complete'
 type StorageStatus = 'loading' | 'saving' | 'saved' | 'error'
 
+type DirectoryFileHandle = {
+  kind: 'file'
+  getFile(): Promise<File>
+}
+
+type DirectoryHandle = {
+  kind: 'directory'
+  values(): AsyncIterable<DirectoryEntry>
+}
+
+type DirectoryEntry = DirectoryFileHandle | DirectoryHandle
+
+type DirectoryPickerWindow = Window & {
+  showDirectoryPicker?: () => Promise<DirectoryHandle>
+}
+
 const ACCEPTED_EXTENSIONS = /\.(jpe?g|tiff?|png|webp)$/i
 const BURSTS_PAGE_SIZE = 50
 const REVIEW_PAGE_SIZE = 50
+
+async function readDirectoryFiles(root: DirectoryHandle): Promise<File[]> {
+  const files: File[] = []
+  const directories = [root]
+
+  for (let index = 0; index < directories.length; index += 1) {
+    for await (const entry of directories[index].values()) {
+      if (entry.kind === 'directory') directories.push(entry)
+      else files.push(await entry.getFile())
+    }
+  }
+
+  return files
+}
 
 function isImageFile(file: File): boolean {
   return file.type.toLocaleLowerCase('en-US').startsWith('image/') || ACCEPTED_EXTENSIONS.test(file.name)
@@ -84,6 +114,7 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
   const [visibleReviewCount, setVisibleReviewCount] = useState(REVIEW_PAGE_SIZE)
   const [isHydrated, setIsHydrated] = useState(false)
   const [isCheckingStorage, setIsCheckingStorage] = useState(false)
+  const [isSelectingFolder, setIsSelectingFolder] = useState(false)
   const [isTemporaryMode, setIsTemporaryMode] = useState(false)
   const [storageStatus, setStorageStatus] = useState<StorageStatus>('loading')
   const [storageProgress, setStorageProgress] = useState<LocalSaveProgress | null>(null)
@@ -317,6 +348,33 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
     void addFiles(event.dataTransfer.files)
   }
 
+  const selectFolder = async () => {
+    const picker = (window as DirectoryPickerWindow).showDirectoryPicker
+    if (!picker) {
+      folderInputRef.current?.click()
+      return
+    }
+
+    setIsSelectingFolder(true)
+    setError('')
+    try {
+      const directory = await picker.call(window)
+      const selectedFiles = await readDirectoryFiles(directory)
+      if (!selectedFiles.length) {
+        setError('A pasta selecionada não contém arquivos.')
+        return
+      }
+      await addFiles(selectedFiles)
+    } catch (reason) {
+      if (reason instanceof DOMException && reason.name === 'AbortError') return
+      setError(reason instanceof Error
+        ? `Não foi possível ler a pasta selecionada. ${reason.message}`
+        : 'Não foi possível ler a pasta selecionada.')
+    } finally {
+      setIsSelectingFolder(false)
+    }
+  }
+
   const startAnalysis = () => {
     const seconds = Number(maxGapSeconds)
     if (!hydratedRef.current || isCheckingStorage || storageStatus === 'loading' || storageStatus === 'saving') {
@@ -481,7 +539,7 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
   const totalBytes = files.reduce((total, file) => total + file.size, 0)
   const archiveDownloadMode = getArchiveDownloadMode()
   const canStreamToDisk = archiveDownloadMode !== 'blob'
-  const fileControlsDisabled = !isHydrated || isCheckingStorage || busy || storageStatus === 'loading' || storageStatus === 'saving'
+  const fileControlsDisabled = !isHydrated || isCheckingStorage || isSelectingFolder || busy || storageStatus === 'loading' || storageStatus === 'saving'
   const storageWarning = isTemporaryMode || storageStatus === 'error'
   const burstsToShow = result?.bursts.slice(0, visibleBurstCount) ?? []
   const reviewToShow = result?.review.slice(0, visibleReviewCount) ?? []
@@ -565,10 +623,21 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
           <span className="upload-icon"><Upload size={23} /></span>
           <strong>Selecione uma pasta ou arraste fotografias</strong>
           <span>JPG, JPEG, TIFF, PNG, WEBP ou outro formato de imagem reconhecido pelo navegador.</span>
-          <span>Em “Escolher pasta”, a lista pode ficar vazia porque a janela não mostra as fotos individuais. Selecione a pasta desejada e confirme em “Fazer upload” ou “Selecionar pasta”; para marcar JPG/PNG individualmente, use “Escolher imagens”.</span>
+          <span className="folder-picker-note" aria-live="polite">
+            {isSelectingFolder
+              ? 'Lendo os arquivos da pasta localmente…'
+              : 'As fotos são lidas neste navegador e não são enviadas. Para selecionar imagens avulsas, use “Escolher imagens”.'}
+          </span>
           <div className="burst-file-actions">
-            <button className="button button-secondary" disabled={fileControlsDisabled} onClick={() => folderInputRef.current?.click()} type="button">
-              <FolderOpen size={15} /> Escolher pasta
+            <button
+              aria-busy={isSelectingFolder}
+              className="button button-primary burst-folder-picker-button"
+              disabled={fileControlsDisabled}
+              onClick={() => void selectFolder()}
+              type="button"
+            >
+              <FolderOpen aria-hidden="true" size={18} />
+              {isSelectingFolder ? 'Lendo pasta…' : 'Selecionar pasta'}
             </button>
             <button className="button button-secondary" disabled={fileControlsDisabled} onClick={() => fileInputRef.current?.click()} type="button">
               <Image size={15} /> Escolher imagens
