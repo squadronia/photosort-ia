@@ -344,20 +344,22 @@ export function organizeBursts(
       first.name.localeCompare(second.name) ||
       first.id.localeCompare(second.id),
     )
+    const streamSelection = selectBurstPhotos(ordered)
+    const selectedIds = new Set(streamSelection.selected.map((photo) => photo.id))
+    for (const diagnostic of streamSelection.excessDiagnostics) {
+      unorderedExcessDiagnostics.push(diagnostic)
+    }
+
     let current: PhotoMetadata[] = []
 
     const finishBurst = () => {
       if (!current.length) return
-      const { selected, excess, excessDiagnostics } = selectBurstPhotos(current)
       unorderedBursts.push({
         cameraLabel: stream.label,
         photos: current,
-        selected,
-        excess,
+        selected: current.filter((photo) => selectedIds.has(photo.id)),
+        excess: current.filter((photo) => !selectedIds.has(photo.id)),
       })
-      for (const diagnostic of excessDiagnostics) {
-        unorderedExcessDiagnostics.push(diagnostic)
-      }
       current = []
     }
 

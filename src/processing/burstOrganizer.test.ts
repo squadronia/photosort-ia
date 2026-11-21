@@ -116,6 +116,17 @@ describe('organizeBursts', () => {
     expect(result.summary.excessPhotos).toBe(0)
   })
 
+  it('applies the FPS limit across burst boundaries when the grouping gap is shorter', () => {
+    const photos = photosInOneSecond(15)
+    const result = organizeBursts(photos, 50)
+
+    expect(result.summary.burstCount).toBe(15)
+    expect(result.summary.excessPhotos).toBe(5)
+    expect(result.summary.completePhotos).toBe(10)
+    expect(result.bursts.flatMap((burst) => burst.selected).map((item) => item.id))
+      .toEqual(photos.slice(3, 13).map((item) => item.id))
+  })
+
   it('keeps camera streams separate even when their times overlap', () => {
     const photos = [
       photo(1, { cameraSerial: 'body-1', capturedAtMs: 1000 }),
