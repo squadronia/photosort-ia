@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
-import { Activity, Archive, Check, Download, FolderOpen, Image, Upload, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react'
+import { Activity, Archive, Check, CircleHelp, Download, FolderOpen, Image, Upload, X } from 'lucide-react'
 import {
   canSaveArchiveToDisk,
   downloadArchiveFile,
@@ -541,6 +541,59 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
   const canStreamToDisk = archiveDownloadMode !== 'blob'
   const fileControlsDisabled = !isHydrated || isCheckingStorage || isSelectingFolder || busy || storageStatus === 'loading' || storageStatus === 'saving'
   const storageWarning = isTemporaryMode || storageStatus === 'error'
+  const currentWorkflowStep = result
+    ? 3
+    : files.length > 0 && Number(maxGapSeconds) > 0
+      ? 2
+      : 1
+  const storageStatusTitle = isCheckingStorage
+    ? 'Verificando espaço'
+    : isTemporaryMode
+      ? 'Modo temporário'
+      : storageStatus === 'loading'
+        ? 'Restaurando sessão'
+        : storageStatus === 'saving'
+          ? 'Salvando no navegador'
+          : storageStatus === 'error'
+            ? 'Falha ao salvar'
+            : 'Salvo neste navegador'
+  const storageStatusMessage = isCheckingStorage
+    ? 'Calculando o espaço disponível para esta pasta.'
+    : isTemporaryMode
+      ? canStreamToDisk
+        ? 'Mantenha esta tela aberta até concluir o download do ZIP.'
+        : 'Este navegador não consegue transferir esta seleção grande.'
+      : storageStatus === 'loading'
+        ? 'Carregando fotos e resultados guardados neste navegador.'
+        : storageStatus === 'saving'
+          ? 'As alterações estão sendo salvas automaticamente.'
+          : storageStatus === 'error'
+            ? 'Os dados recentes podem desaparecer se você fechar esta página.'
+            : lastSavedAt
+              ? `Atualizado às ${new Intl.DateTimeFormat('pt-BR', { timeStyle: 'short' }).format(lastSavedAt)} · somente neste navegador.`
+              : 'Fotos e resultados ficam somente neste navegador.'
+  const storageDetailMessage = isCheckingStorage
+    ? 'Verificando espaço local para esta pasta…'
+    : isTemporaryMode && !canStreamToDisk
+      ? 'Esta seleção grande exige gravação por fluxo, que não está disponível neste ambiente. Use o Safari 26 ou mais recente, ou uma aba normal do Chrome ou Edge atualizado; esta seleção temporária não pode ser transferida.'
+      : isTemporaryMode && archiveDownloadMode === 'finder'
+        ? 'As fotos e os resultados não serão salvos. O Safari montará o ZIP no armazenamento local do site e depois permitirá baixá-lo para a pasta de downloads configurada, visível no Finder. Mantenha esta tela aberta até concluir o download.'
+        : isTemporaryMode
+          ? 'As fotos e os resultados não serão salvos no navegador. Mantenha esta tela aberta até o ZIP ser gravado diretamente no disco; fechar ou recarregar a página descarta esta seleção.'
+          : storageStatus === 'loading'
+            ? 'Carregando os arquivos e resultados salvos para esta conta…'
+            : storageStatus === 'saving'
+              ? 'Salvando automaticamente os arquivos e resultados neste navegador…'
+              : storageStatus === 'error'
+                ? `O salvamento local não foi concluído. Você ainda pode processar e baixar o ZIP, mas os dados atuais podem desaparecer se fechar esta página. ${storageError}`
+                : `Salvamento automático ativo para esta conta neste navegador. Os dados não são enviados à nuvem; limpar os dados do site também apaga essa cópia${lastSavedAt ? ` · salvo em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(lastSavedAt)}` : ''}.`
+  const archiveDetailMessage = archiveDownloadMode === 'picker'
+    ? 'Ao baixar, o navegador abrirá a janela do sistema para escolher onde salvar o ZIP; ele será gravado diretamente, sem carregar o arquivo inteiro na memória.'
+    : archiveDownloadMode === 'finder'
+      ? 'No Safari, o ZIP é montado por fluxo no armazenamento local do site e, ao final, você poderá baixá-lo para a pasta configurada em Safari > Ajustes > Geral > Local de download. Esse arquivo temporário exige espaço livre adicional próximo ao tamanho do ZIP.'
+      : isTemporaryMode
+        ? 'Para esta seleção grande, é necessário gravar o ZIP por fluxo. Use o Safari 26 ou mais recente, ou uma aba normal do Chrome ou Edge atualizado; não feche esta página antes de decidir, pois os arquivos selecionados aqui são temporários.'
+        : 'Este navegador não permite gravar ZIPs grandes por fluxo. Seleções que excedem o espaço local serão recusadas; use Safari 26 ou mais recente, Google Chrome ou Microsoft Edge atualizado.'
   const burstsToShow = result?.bursts.slice(0, visibleBurstCount) ?? []
   const reviewToShow = result?.review.slice(0, visibleReviewCount) ?? []
 
@@ -548,43 +601,55 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
     <>
       <header className="page-heading burst-hero">
         <div className="burst-hero-content">
-          <span className="burst-eyebrow"><Activity aria-hidden="true" size={14} /> ORGANIZAÇÃO FOTOGRÁFICA</span>
+          <span className="burst-eyebrow"><Activity aria-hidden="true" size={14} /> WORKSPACE DE FOTOGRAFIA</span>
           <h1>Organizador de rajadas</h1>
-          <p>Analise sequências por metadados EXIF, revise excedentes e exporte os originais em um ZIP organizado.</p>
-          <div aria-label="Recursos do organizador" className="burst-hero-features">
-            <span><Check aria-hidden="true" size={14} /> Processamento local</span>
-            <span><Image aria-hidden="true" size={14} /> Agrupamento por EXIF</span>
-            <span><Archive aria-hidden="true" size={14} /> Exportação sem recompressão</span>
-          </div>
+          <p>Transforme pastas cheias de fotos em rajadas organizadas, com excedentes preservados e originais prontos para exportar.</p>
         </div>
+        <div className="burst-hero-mark" aria-hidden="true"><Activity size={25} /></div>
       </header>
-      <div className="notice notice-info">
-        <Image size={17} />
-        <span>O processamento acontece neste navegador. As imagens não são enviadas ao Supabase e não há reconhecimento facial nem avaliação estética.</span>
-      </div>
-      <div className={`notice ${storageWarning ? 'notice-warning' : 'notice-info'}`} role={storageWarning ? 'alert' : 'status'}>
-        <Archive size={17} />
-        <span>
-          {isCheckingStorage
-            ? 'Verificando espaço local para esta pasta…'
-            : isTemporaryMode
-              ? canStreamToDisk
-                ? archiveDownloadMode === 'finder'
-                  ? 'Modo temporário ativo: as fotos e os resultados não serão salvos. O Safari montará o ZIP no armazenamento local do site e depois permitirá baixá-lo para a pasta de downloads configurada, visível no Finder. Mantenha esta tela aberta até concluir o download.'
-                  : 'Modo temporário ativo: as fotos e os resultados não serão salvos no navegador. Mantenha esta tela aberta até o ZIP ser gravado diretamente no disco; fechar ou recarregar a página descarta esta seleção.'
-                : 'Esta seleção grande exige gravação por fluxo, que não está disponível neste ambiente. Use o Safari 26 ou mais recente, ou uma aba normal do Chrome ou Edge atualizado; esta seleção temporária não pode ser transferida.'
-              : storageStatus === 'loading'
-            ? 'Carregando os arquivos e resultados salvos para esta conta…'
-            : storageStatus === 'saving'
-              ? 'Salvando automaticamente os arquivos e resultados neste navegador…'
-              : storageStatus === 'error'
-                ? `O salvamento local não foi concluído. Você ainda pode processar e baixar o ZIP, mas os dados atuais podem desaparecer se fechar esta página. ${storageError}`
-                : `Salvamento automático ativo para esta conta neste navegador. Os dados não são enviados à nuvem; limpar os dados do site também apaga essa cópia${lastSavedAt ? ` · salvo em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(lastSavedAt)}` : ''}.`}
-        </span>
+      <section className="burst-workflow" aria-label="Fluxo de organização em três etapas">
+        <div className="burst-workflow-heading">
+          <div><span className="burst-workflow-kicker">FLUXO DE TRABALHO</span><h2>Da pasta ao ZIP em três etapas</h2></div>
+          <span className="burst-workflow-progress">Etapa {currentWorkflowStep} de 3</span>
+        </div>
+        <ol className="burst-workflow-grid">
+          {[
+            { title: 'Selecione as fotos', description: 'Escolha uma pasta ou imagens do evento.', icon: <FolderOpen aria-hidden="true" size={19} /> },
+            { title: 'Defina o intervalo', description: 'Ajuste o ritmo da câmera para agrupar as rajadas.', icon: <Activity aria-hidden="true" size={19} /> },
+            { title: 'Analise e exporte', description: 'Revise o resultado e baixe os originais em ZIP.', icon: <Archive aria-hidden="true" size={19} /> },
+          ].map((step, index) => {
+            const stepNumber = index + 1
+            const isComplete = stepNumber < currentWorkflowStep
+            const isCurrent = stepNumber === currentWorkflowStep
+            return (
+              <li
+                aria-current={isCurrent ? 'step' : undefined}
+                className={`burst-workflow-card${isCurrent ? ' is-current' : ''}${isComplete ? ' is-complete' : ''}`}
+                key={step.title}
+              >
+                <span className="burst-workflow-icon">{step.icon}</span>
+                <span className="burst-workflow-copy"><span className="burst-workflow-step">0{stepNumber} · {isComplete ? 'Concluído' : isCurrent ? 'Em andamento' : 'Próximo'}</span><strong>{step.title}</strong><small>{step.description}</small></span>
+              </li>
+            )
+          })}
+        </ol>
+      </section>
+      <section className={`burst-storage-card${storageWarning ? ' is-warning' : ''}`} role={storageWarning ? 'alert' : 'status'}>
+        <span className="burst-storage-icon"><Archive aria-hidden="true" size={17} /></span>
+        <div className="burst-storage-copy">
+          <strong>{storageStatusTitle}<span className="burst-local-label"> · Local e privado</span></strong>
+          <span>{storageStatusMessage}</span>
+          {storageStatus === 'error' && !isTemporaryMode && <span className="burst-storage-error">{storageError}</span>}
+        </div>
         {storageStatus === 'error' && !isTemporaryMode && (
           <button className="text-button" onClick={retryStorage} type="button">Tentar novamente</button>
         )}
-      </div>
+        <details className="burst-storage-details">
+          <summary>Detalhes</summary>
+          <p>As fotos são analisadas neste navegador, sem envio à nuvem, reconhecimento facial ou avaliação estética.</p>
+          <p>{storageDetailMessage}</p>
+        </details>
+      </section>
       {storageStatus === 'saving' && (
         <div className="upload-progress" aria-live="polite" role="status">
           <div>
@@ -600,16 +665,10 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
           )}
         </div>
       )}
-      <div className={`notice ${canStreamToDisk ? 'notice-info' : 'notice-warning'}`}>
-        <Archive size={17} />
-        <span>{archiveDownloadMode === 'picker'
-          ? 'Ao baixar, o navegador abrirá a janela do sistema para escolher onde salvar o ZIP; ele será gravado diretamente, sem carregar o arquivo inteiro na memória.'
-          : archiveDownloadMode === 'finder'
-            ? 'No Safari, o ZIP é montado por fluxo no armazenamento local do site e, ao final, você poderá baixá-lo para a pasta configurada em Safari > Ajustes > Geral > Local de download. Esse arquivo temporário exige espaço livre adicional próximo ao tamanho do ZIP.'
-            : isTemporaryMode
-              ? 'Para esta seleção grande, é necessário gravar o ZIP por fluxo. Use o Safari 26 ou mais recente, ou uma aba normal do Chrome ou Edge atualizado; não feche esta página antes de decidir, pois os arquivos selecionados aqui são temporários.'
-              : 'Este navegador não permite gravar ZIPs grandes por fluxo. Seleções que excedem o espaço local serão recusadas; use Safari 26 ou mais recente, Google Chrome ou Microsoft Edge atualizado.'}</span>
-      </div>
+      <details className={`burst-compatibility${canStreamToDisk ? '' : ' is-warning'}`}>
+        <summary><Archive aria-hidden="true" size={15} /> Compatibilidade e local de download</summary>
+        <p>{archiveDetailMessage}</p>
+      </details>
       {error && <div className="notice notice-warning" role="alert">{error}</div>}
 
       <section className="panel burst-upload-panel">
@@ -621,12 +680,12 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
           onDrop={onDrop}
         >
           <span className="upload-icon"><Upload size={23} /></span>
-          <strong>Selecione uma pasta ou arraste fotografias</strong>
-          <span>JPG, JPEG, TIFF, PNG, WEBP ou outro formato de imagem reconhecido pelo navegador.</span>
+          <strong>Adicione as fotografias do evento</strong>
+          <span>Arraste arquivos para cá ou escolha uma pasta · JPG, TIFF, PNG ou WEBP.</span>
           <span className="folder-picker-note" aria-live="polite">
             {isSelectingFolder
               ? 'Lendo os arquivos da pasta localmente…'
-              : 'As fotos são lidas neste navegador e não são enviadas. Para selecionar imagens avulsas, use “Escolher imagens”.'}
+              : 'Seus originais não são alterados. Imagens avulsas também podem ser selecionadas.'}
           </span>
           <div className="burst-file-actions">
             <button
@@ -676,7 +735,7 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
 
         <div className="burst-controls">
           <label className="field">
-            Intervalo máximo entre fotos da mesma rajada (segundos)
+            Intervalo máximo entre fotos (segundos)
             <input
               min="0.01"
               disabled={busy || isCheckingStorage || !isHydrated || storageStatus === 'loading'}
@@ -693,13 +752,13 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
                 setPhase('idle')
                 void persistCurrentSession()
               }}
-              placeholder="Escolha após avaliar sua sequência"
+              placeholder="Defina conforme a câmera"
               step="0.01"
               type="number"
               value={maxGapSeconds}
             />
           </label>
-          <p>O intervalo é definido por processamento, sem valor universal predefinido. Teste com fotos reais da câmera usada.</p>
+          <p>Use uma amostra real da câmera. Não existe um intervalo universal.</p>
         </div>
 
         {phase === 'analyzing' || phase === 'cancelling' ? (
@@ -725,7 +784,7 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
         ) : null}
 
         <div className="form-actions burst-actions">
-          <span>Limite: {MAX_PHOTOS_PER_WINDOW} fotos por janela móvel de {FPS_WINDOW_MS / 1000} s. Excedentes e fotos ambíguas são preservados para revisão.</span>
+          <span className="burst-policy">Até {MAX_PHOTOS_PER_WINDOW} fotos por janela de {FPS_WINDOW_MS / 1000} s · excedentes ficam preservados.</span>
           <div className="burst-action-buttons">
             {busy ? (
               <button className="button button-secondary" onClick={cancelCurrentOperation} type="button">
@@ -783,29 +842,27 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
 
       {result ? (
         <section className="burst-results">
-          {phase === 'complete' && <div className="notice notice-info"><Check size={17} /><span>{archiveDownloadMode === 'finder' ? 'Arquivo PHOTOSORT.zip criado. Clique em “Baixar para o Finder”; o Safari usará o local de download configurado e você poderá encontrá-lo no Finder. Depois de confirmar que o download terminou, use “Liberar espaço temporário” para apagar a cópia intermediária do navegador.' : 'Arquivo PHOTOSORT.zip criado com os originais, excedentes, revisão e relatório. Se o navegador não abriu uma janela para escolher a pasta, procure o ZIP no local de downloads configurado no navegador.'}</span></div>}
+          {phase === 'complete' && <div className="notice notice-info burst-complete-notice"><Check size={17} /><span>{archiveDownloadMode === 'finder' ? 'ZIP criado. Baixe para o Finder e libere o espaço temporário após confirmar o download.' : 'ZIP criado com originais, excedentes, revisão e relatório. Se não abriu a janela de destino, confira a pasta de downloads.'}</span></div>}
           {result.summary.duplicateCheckUnavailable > 0 && (
             <div className="notice notice-warning" role="status">
               <span>{result.summary.duplicateCheckUnavailable} arquivo(s) não puderam ser verificados por SHA-256; eles continuam incluídos nos resultados.</span>
             </div>
           )}
           <div className="metric-grid burst-metric-grid">
-            <MetricCard label="Fotos recebidas" value={result.summary.totalPhotos.toLocaleString('pt-BR')} hint={`${formatBytes(totalBytes)} selecionados`} />
-            <MetricCard label="Rajadas identificadas" value={result.summary.burstCount.toLocaleString('pt-BR')} hint="Grupos por câmera e horário" />
-            <MetricCard label="Rajadas com excedentes" value={result.summary.burstsOverLimit.toLocaleString('pt-BR')} hint="Grupos com excesso na janela móvel" />
-            <MetricCard label="Fotos completas" value={result.summary.completePhotos.toLocaleString('pt-BR')} hint="Originais mantidos" />
-            <MetricCard label="Fotos excedentes" value={result.summary.excessPhotos.toLocaleString('pt-BR')} hint="Imagens a mais, preservadas" />
-            <MetricCard label="Fotos para revisão" value={result.summary.reviewPhotos.toLocaleString('pt-BR')} hint={`${result.summary.missingMetadataPhotos} sem data válida`} />
+            <MetricCard icon={<Image size={17} />} label="Fotos recebidas" value={result.summary.totalPhotos.toLocaleString('pt-BR')} hint={`${formatBytes(totalBytes)} selecionados`} />
+            <MetricCard icon={<Activity size={17} />} label="Rajadas identificadas" value={result.summary.burstCount.toLocaleString('pt-BR')} hint="Grupos por câmera e horário" />
+            <MetricCard icon={<Archive size={17} />} label="Rajadas com excedentes" value={result.summary.burstsOverLimit.toLocaleString('pt-BR')} hint="Grupos acima do limite móvel" />
+            <MetricCard icon={<Check size={17} />} label="Fotos completas" value={result.summary.completePhotos.toLocaleString('pt-BR')} hint="Originais mantidos" />
+            <MetricCard icon={<Upload size={17} />} label="Fotos excedentes" value={result.summary.excessPhotos.toLocaleString('pt-BR')} hint="Imagens preservadas" />
+            <MetricCard icon={<CircleHelp size={17} />} label="Fotos para revisão" value={result.summary.reviewPhotos.toLocaleString('pt-BR')} hint={`${result.summary.missingMetadataPhotos} sem data válida`} />
           </div>
-          <div className="notice notice-info">
+          <div className="burst-result-insight">
             <Check size={17} />
-            <span>
-              {result.summary.burstsOverLimit} rajada(s) excedente(s) (unidades) contêm {result.summary.excessPhotos} foto(s) excedente(s) no total. {result.summary.duplicateCopies} cópia(s) duplicada(s) exata(s) foram identificadas por SHA-256 e mantidas no resultado.
-            </span>
+            <span><strong>{result.summary.excessPhotos} fotos excedentes</strong> em {result.summary.burstsOverLimit} rajadas · {result.summary.duplicateCopies} cópias idênticas preservadas.</span>
           </div>
 
-          <section className="panel burst-list-panel">
-            <h2 className="section-title">Como entender o resultado</h2>
+          <details className="panel burst-list-panel burst-summary-details">
+            <summary><span><strong>Como interpretar os resultados</strong><small>Regras de agrupamento, excedentes e revisão</small></span><span className="burst-details-action">Ver explicação</span></summary>
             <div className="burst-summary-help">
               <p><strong>Fotos recebidas:</strong> total de imagens aceitas nesta organização.</p>
               <p><strong>Rajadas identificadas:</strong> grupos formados por câmera e horário EXIF, usando o intervalo máximo que você definiu.</p>
@@ -815,7 +872,7 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
               <p><strong>Fotos para revisão:</strong> imagens sem horário válido ou com sequência ambígua, mantidas separadas e fora das rajadas.</p>
               <p><strong>Na tabela “Rajadas identificadas”:</strong> cada linha é uma rajada; a coluna “Excedentes” mostra quantas fotos sobraram naquela unidade. O cartão “Fotos excedentes” mostra a soma de todas as linhas.</p>
             </div>
-          </section>
+          </details>
 
           <section className="panel burst-list-panel">
             <div className="section-heading-row">
@@ -900,9 +957,10 @@ export function BurstOrganizerPage({ userId }: { userId: string }) {
   )
 }
 
-function MetricCard({ label, value, hint }: { label: string; value: string; hint: string }) {
+function MetricCard({ icon, label, value, hint }: { icon: ReactNode; label: string; value: string; hint: string }) {
   return (
     <article className="metric-card">
+      <div className="metric-top"><span className="metric-icon">{icon}</span></div>
       <p>{label}</p>
       <strong>{value}</strong>
       <span className="metric-hint">{hint}</span>
